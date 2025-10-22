@@ -83,33 +83,6 @@ The system employs a sophisticated 4-layer verification algorithm that combines 
 - **Integration**: Processes verification results to improve future accuracy and detect sophisticated disinformation campaigns
 
 ### Integrity Scoring Algorithm
-
-```python
-def calculate_integrity_score(report):
-    base_score = 0.5
-
-    # Layer 1: Source credibility (0-1 scale)
-    source_credibility = assess_source_credibility(report.source)
-    score += source_credibility * 0.3
-
-    # Layer 2: Cross-reference verification
-    corroboration_found = search_corroborating_reports(report.title)
-    if corroboration_found:
-        score += 0.2
-
-    # Layer 3: AI content analysis
-    ai_analysis = analyze_with_cudos_ai(report.content)
-    score += ai_analysis.integrity_score * 0.3
-
-    # Layer 4: Media verification
-    if report.media_url:
-        deepfake_prob = detect_deepfake_probability(report.media_url)
-        if deepfake_prob < 0.3:
-            score += 0.2
-
-    return min(score, 1.0)
-```
-
 ### Integrity Level Determination
 
 - **Verified (0.8-1.0)**: High-confidence authentic content, stored on IPFS
@@ -201,7 +174,7 @@ tailwindcss==3.4.10
 vite==7.1.2
 ```
 
-## Setup Instructions
+## Setup
 
 ### Prerequisites
 - Python 3.11+
@@ -226,8 +199,8 @@ cd backend
 python -m venv venv
 
 # Activate virtual environment
-# Windows:
-venv\Scripts\activate
+# wsl
+source venv/bin/activate
 # Unix/Mac:
 source venv/bin/activate
 
@@ -237,15 +210,15 @@ pip install -r requirements.txt
 # Set up environment variables
 cp .env.example .env
 # Edit .env with your API keys:
-# - ANTHROPIC_API_KEY (from https://console.anthropic.com/)
 # - CUDOS_API_KEY (from CUDOS ASI Cloud)
+# - ANTHROPIC_API_KEY (from https://console.anthropic.com/)
 # - DATABASE_URL (SQLite by default)
 
 # Initialize database
 python setup_db.py
 
 # Start the backend server
-python main.py
+uvicorn main:app
 ```
 The API will be available at `http://localhost:8000`
 
@@ -287,13 +260,6 @@ PRIVATE_KEY=your_wallet_private_key
 
 # Optional: MeTTa Service
 METTA_SERVICE_URL=http://localhost:8080
-```
-
-### Docker Deployment (Alternative)
-
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
 ```
 
 ### Testing the System
@@ -338,7 +304,7 @@ curl -X POST http://localhost:8000/api/news/reports \
 ## Key Features
 
 ### AI-Powered Verification
-- **Multi-source validation** combining web search, AI analysis, and community input
+- **Multi-source validation** combining web search, AI analysis, and community input to provide more input for better trust to the ai
 - **Deepfake detection** using computer vision and facial recognition
 - **Source credibility scoring** based on historical performance
 - **Pattern recognition** for detecting coordinated disinformation
@@ -372,12 +338,6 @@ We welcome contributions from developers, journalists, and AI researchers!
 4. Run the test suite: `pytest` (backend) and `npm test` (frontend)
 5. Submit a pull request
 
-### Areas for Contribution
-- **AI Model Improvements**: Enhance verification algorithms
-- **New Verification Sources**: Add support for additional fact-checking APIs
-- **UI/UX Enhancements**: Improve the user interface and experience
-- **Blockchain Integration**: Expand smart contract functionality
-- **Internationalization**: Add support for multiple languages
 
 ## License
 
@@ -392,84 +352,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ for a more truthful and transparent world**
-
-
-## API Endpoints
-
-### Auth
-- `POST /api/auth/...` — Authentication endpoints
-
-### MeTTa
-- `POST /api/metta/atoms` — Create knowledge atoms
-- `POST /api/metta/verify/{event_id}` — Verify event
-- `GET /api/metta/atoms/{event_id}` — Get event atoms
-- `GET /api/metta/knowledge-base` — Get knowledge base state
-
-### AI MeTTa
-- `POST /api/ai-metta/...` — AI-powered MeTTa endpoints
-
-### Users
-- `GET /api/users/...` — User management endpoints
-
-### Community Verification
-- `POST /api/community-verification/...` — Community verification endpoints
-
-### Economic Impact
-- `GET /api/economic-impact/...` — Economic impact endpoints
-
-### DAO Governance
-- `POST /api/dao/...` — DAO governance endpoints
-
-### Alerts
-- `GET /api/alerts/...` — News integrity alert endpoints
-
-### Blockchain (if enabled)
-- `POST /api/blockchain/deploy-contract` — Deploy smart contract
-- `POST /api/blockchain/trigger-payout` — Trigger payout
-- `GET /api/blockchain/transaction/{hash}` — Get transaction status
-
-### News Integrity
-- `POST /api/news/reports` — Create a new news report
-- `GET /api/news/reports/{source}` — Get recent news reports for a source
-- `GET /api/news/analysis/{source}` — Get news analysis for a source
-- `GET /api/news/alerts/{source}` — Get active news integrity alerts for a source
-- `GET /api/news/stats/{source}` — Get statistics for news reports from a source
-- `GET /api/news/sources` — Get all sources with news reports
-- `GET /api/news/stats` — Get global news statistics
-- `GET /api/news/reports/recent` — Get recent news reports from all sources
-- `POST /api/news/reports/{report_id}/verify` — Verify or unverify a news report
-- `GET /api/news/health` — News service health check
-
-### Service Health
-- `GET /` — API root
-- `GET /health` — General health check
-
-## Development Status
-
-This is a hackathon demo project. Current implementation includes:
-
-- MeTTa knowledge base integration
-- Project structure and dependencies
-- Basic API endpoints
-- React PWA frontend
-- Database schema
-- Camera integration
-- Map visualization
-
-In Progress:
-- Smart contract deployment
-- Blockchain integration
-- IPFS photo storage
-
-## Contributing
-
-This is a hackathon project.
-To contribute you can clone to your machine
-```bash
-git clone https://github.com/samwel-gachiri/bgihackstation.git
-```
-Follow the procedure above to now install the backend and frontend and you are all set up to go. 
+**Built with ❤️ for a more truthful and transparent world** 
 
 ## License
 
