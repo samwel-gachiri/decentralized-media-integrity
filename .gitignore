@@ -1,0 +1,30 @@
+# ignored root
+.vscode
+.kiro
+
+
+# remove old frontend
+frontend/
+
+# ignored frontend
+frontend-react/.env
+frontend/node_modules/
+frontend-react/node_modules/
+
+# ignored backend
+backend/.venv
+backend/.env
+.env
+.env.example
+backend/venv
+backend/"*
+backend/uploads
+backend/__pycache__
+backend/app/__pycache__
+backend/app/api/routes/__pycache__/
+backend/app/services/__pycache__/
+backend/climate_witness.db
+
+node_modules
+package-lock.json
+frontend-react/package-lock.json
