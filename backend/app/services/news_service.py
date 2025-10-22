@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.database import NewsReport, IntegrityAlert, PatternCache, get_session, get_db, IntegrityLevelEnum
 from app.models.newsmodels import NewsReportCreate, NewsReportResponse, IntegrityAlertResponse, ReportStatsResponse
-from app.services.metta_client import MeTTaNewsClient
+from app.services.metta_service import MeTTaService
 from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime, timedelta, timezone
@@ -130,7 +130,7 @@ class CUDOSASIClient:
             
 class NewsService:
     def __init__(self):
-        self.metta_client = MeTTaNewsClient()
+        self.metta_client = MeTTaService()
         self.ddg_search = duckduckgo_search.DDGS()
         # Initialize CUDOS ASI Cloud client for AI inference
         self.cudos_client = CUDOSASIClient()

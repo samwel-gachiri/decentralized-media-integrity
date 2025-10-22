@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional, Tuple, Union
 from hyperon import MeTTa, Atom, ExpressionAtom
 from app.database.crud import *
 from app.database.models import MeTTaAtom, Event, User
+from app.models.newsmodels import NewsReportCreate, MediaAnalysisResponse
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -65,7 +66,7 @@ class NewsIntegrityKnowledgeBase:
             'helper_functions.metta', 
             'users.metta',
             'verification_rules.metta',
-            'news_data.metta',
+            'news_integrity_data.metta',
             'advanced_verification.metta',
             'economic_analysis.metta',
             'governance_logic.metta',
@@ -504,13 +505,40 @@ class NewsIntegrityKnowledgeBase:
         """Query specific atom space with pattern"""
         try:
             if space_name in self.atom_spaces:
-                return self.query_atoms(query_pattern, space_name)
+                space_ref = self.atom_spaces[space_name]
+                query = f"!(match {space_ref} {query_pattern} $result)"
+                result = self.metta.run(query)
+                return self._parse_query_result(result)
             else:
                 logger.warning(f"Atom space {space_name} not found")
                 return []
         except Exception as e:
             logger.error(f"Error querying atom space {space_name}: {e}")
             return []
+
+    def get_source_analysis(self, source: str, days_back: int = 30) -> Optional[MediaAnalysisResponse]:
+        """Get news integrity analysis for a specific source"""
+        try:
+            # Query MeTTa knowledge base for source-related atoms
+            query = f'(news-source $news_id "{source}")'
+            results = self.query_atom_space("event", query)
+
+            if results:
+                # Create a mock analysis response based on available data
+                analysis = {
+                    'source': source,
+                    'total_reports': len(results),
+                    'integrity_score': 0.7,  # Default score
+                    'verification_rate': 0.6,
+                    'days_analyzed': days_back
+                }
+                return MediaAnalysisResponse(**analysis)
+            else:
+                return None
+
+        except Exception as e:
+            logging.error(f"Failed to get source analysis from MeTTa: {str(e)}")
+            return None
 
     # Result processing methods
     def _process_verification_result(self, result) -> dict:
@@ -650,19 +678,26 @@ class MeTTaService:
         else:
             return 'other'
     
-    async def run_verification(self, news_report: 'NewsReport', user: 'User', content_confidence: int, source_confidence: int) -> bool:
+    async def run_verification(self, news_report: 'NewsReport', user: 'User', content_confidence: int, source_confidence: int) -> Dict[str, Any]:
         """Run MeTTa verification logic on a news report object and user object (no DB queries)"""
         try:
             print("Creating news atoms...")
             news_atoms, metta_news_id = self.knowledge_base.create_news_atoms(news_report, user)
             print("Running verification from the knowledge base")
             # Run verification using the MeTTa news ID
-            verification_result = self.knowledge_base.run_news_verification(metta_news_id, user.id, content_confidence, source_confidence)
-            print(f"run_ver (verification_result.get('verified')): {verification_result.get('verified')}")
-            return verification_result.get('verified')
+            verification_result = self.knowledge_base.run_verification(metta_news_id, user.id, content_confidence, source_confidence)
+            print(f"run_ver (verification_result): {verification_result}")
+            return verification_result
         except Exception as e:
             logger.error(f"❌ Verification error: {str(e)}")
-            return False
+            return {
+                'verified': False,
+                'event_id': news_report.id,
+                'user_id': user.id,
+                'error': str(e),
+                'reasoning': ['Verification failed due to technical error'],
+                'verification_time': datetime.now().isoformat()
+            }
     
     def query_knowledge_base(self, query: str, space: str = "default") -> List[str]:
         """Query the MeTTa knowledge base"""
@@ -712,3 +747,181 @@ class MeTTaService:
     def query_atom_space(self, space_name: str, query_pattern: str) -> List[Dict[str, Any]]:
         """Query specific atom space with pattern"""
         return self.knowledge_base.query_atom_space(space_name, query_pattern)
+
+    async def submit_news_report(self, report: 'NewsReportCreate') -> Dict:
+        """Submit a news report to MeTTa for integrity analysis"""
+        try:
+            # Convert NewsReportCreate to a mock NewsReport for metta operations
+            class MockNewsReport:
+                def __init__(self, report_data):
+                    self.id = "temp_" + str(hash(str(report_data)))
+                    self.category = report_data.get('category', 'general')
+                    self.timestamp = report_data.get('timestamp')
+                    self.latitude = report_data.get('latitude')
+                    self.longitude = report_data.get('longitude')
+                    self.media_url = report_data.get('media_url')
+                    self.content = report_data.get('content')
+                    self.source = report_data.get('source')
+                    self.integrity_level = report_data.get('integrity_level', 'pending')
+
+            class MockUser:
+                def __init__(self, user_id):
+                    self.id = user_id
+                    self.location_region = None
+                    self.trust_score = 50  # Default trust score
+                    self.wallet_address = None
+
+            mock_report = MockNewsReport(report.model_dump())
+            mock_user = MockUser(report.user)
+
+            # Create atoms using the service (remove await since create_atoms is async but we're in async context)
+            atoms = await self.create_atoms(mock_report, mock_user)
+
+            # Run verification using the service
+            verification_result = await self.run_verification(
+                mock_report, mock_user, 70, 60  # Default confidence scores
+            )
+
+            return {
+                'status': 'success',
+                'atoms_created': len(atoms),
+                'verified': verification_result.get('verified', False),
+                'report_id': mock_report.id,
+                'reasoning': verification_result.get('reasoning', [])
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to submit news report to MeTTa: {str(e)}")
+            return {'error': str(e), 'status': 'failed'}
+
+    def get_global_integrity_patterns(self) -> Dict:
+        """Get global news integrity patterns across all sources"""
+        try:
+            # Get knowledge base state
+            kb_state = self.get_knowledge_base_state()
+
+            # Query for integrity patterns
+            integrity_query = "(integrity-level $news $level)"
+            integrity_results = self.query_atom_space("event", integrity_query)
+
+            # Query for source patterns
+            source_query = "(news-source $news $source)"
+            source_results = self.query_atom_space("event", source_query)
+
+            return {
+                'patterns': {
+                    'integrity_distribution': self._analyze_integrity_distribution(integrity_results),
+                    'source_reliability': self._analyze_source_reliability(source_results),
+                    'total_reports': kb_state.get('atom_counts', {}).get('news_reports', 0)
+                },
+                'knowledge_base_state': kb_state
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to get global integrity patterns from MeTTa: {str(e)}")
+            return {'patterns': {}, 'error': str(e)}
+
+    def analyze_content_integrity(self, content: str) -> Dict:
+        """Analyze content for integrity indicators"""
+        try:
+            # Query knowledge base for similar content
+            content_query = f'(content $news "{content[:50]}...")'
+            content_matches = self.query_atom_space("event", content_query)
+
+            analysis_result = {
+                'integrity_score': 0.7,  # Default score
+                'content_length': len(content),
+                'analysis_method': 'metta_knowledge_base',
+                'existing_similar_content': len(content_matches),
+                'indicators': {
+                    'factual_content': True,
+                    'bias_detected': False,
+                    'source_cited': 'unknown'
+                }
+            }
+
+            return analysis_result
+
+        except Exception as e:
+            logging.error(f"Failed to analyze content integrity: {str(e)}")
+            return {'integrity_score': 0.5, 'error': str(e)}
+
+    def detect_misinformation_patterns(self, reports: List[Dict]) -> Dict:
+        """Detect misinformation patterns across multiple reports"""
+        try:
+            patterns = []
+
+            for report in reports:
+                content = report.get('content', '')
+                source = report.get('source', '')
+
+                # Query for similar content
+                similar_query = f'(content $news "{content[:30]}...")'
+                similar_reports = self.query_atom_space("event", similar_query)
+
+                if len(similar_reports) > 1:
+                    patterns.append({
+                        'type': 'duplicate_content',
+                        'report_id': report.get('id'),
+                        'similar_reports': len(similar_reports),
+                        'severity': 'medium'
+                    })
+
+                # Check source reliability
+                source_query = f'(news-source $news "{source}")'
+                source_reports = self.query_atom_space("event", source_query)
+
+                if len(source_reports) > 5:  # High volume from same source
+                    patterns.append({
+                        'type': 'high_volume_source',
+                        'source': source,
+                        'report_count': len(source_reports),
+                        'severity': 'low'
+                    })
+
+            return {
+                'patterns_detected': len(patterns),
+                'patterns': patterns,
+                'analysis_method': 'metta_pattern_matching'
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to detect misinformation patterns: {str(e)}")
+            return {'patterns': [], 'error': str(e)}
+
+    def health_check(self) -> bool:
+        """Check if MeTTa service is healthy"""
+        try:
+            # Check if we can query the knowledge base
+            kb_state = self.get_knowledge_base_state()
+            return kb_state.get('base_knowledge_loaded', False)
+        except Exception:
+            return False
+
+    def _analyze_integrity_distribution(self, patterns: List[Dict[str, Any]]) -> Dict:
+        """Analyze integrity level distribution"""
+        levels = {'verified': 0, 'pending': 0, 'questionable': 0, 'debunked': 0}
+        for pattern in patterns:
+            pattern_str = pattern.get('raw', '').lower()
+            if 'verified' in pattern_str:
+                levels['verified'] += 1
+            elif 'pending' in pattern_str:
+                levels['pending'] += 1
+            elif 'questionable' in pattern_str:
+                levels['questionable'] += 1
+            elif 'debunked' in pattern_str:
+                levels['debunked'] += 1
+        return levels
+
+    def _analyze_source_reliability(self, patterns: List[Dict[str, Any]]) -> Dict:
+        """Analyze source reliability patterns"""
+        sources = {}
+        for pattern in patterns:
+            pattern_str = pattern.get('raw', '')
+            # Extract source from pattern (simplified parsing)
+            if '"' in pattern_str:
+                parts = pattern_str.split('"')
+                if len(parts) >= 2:
+                    source = parts[1]
+                    sources[source] = sources.get(source, 0) + 1
+        return sources

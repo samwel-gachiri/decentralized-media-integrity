@@ -10,7 +10,7 @@ from hyperon import Atom
 from app.models.database import get_db
 from app.models.newsmodels import NewsReportCreate, NewsReportResponse, IntegrityAlertResponse, ReportStatsResponse
 from app.services.news_service import NewsService
-from app.services.metta_client import MeTTaNewsClient
+from app.services.metta_service import MeTTaService
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize services
 news_service = NewsService()
-metta_client = MeTTaNewsClient()
+metta_client = MeTTaService()
 
 # --- Robust serialization helpers ---
 def serialize_catom(catom: Atom):
