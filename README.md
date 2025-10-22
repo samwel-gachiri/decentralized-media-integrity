@@ -1,7 +1,7 @@
 
 # Decentralized News Integrity Platform
 
-Decentralized News Integrity Platform is a comprehensive solution for community-driven news verification and media integrity monitoring. It leverages MeTTa knowledge atoms for automated content verification and integrates with blockchain for decentralized storage and verification rewards.
+Decentralized News Integrity Platform is a comprehensive solution for community-driven news verification and media integrity monitoring that utilizes CUDOS for the distributed AI Inference , duckduckgo does more search queries on the news report, tensorflow and deepface are used to identify deepfake contents and then metta verifies and provides the scoring. It integrates with blockchain for decentralized storage and verification rewards.
 
 ## System Architecture
 
@@ -46,34 +46,41 @@ graph TB
     W --> Z[Decentralized Storage]
 ```
 
-## 🔬 Algorithm Process
+## Algorithm Process
 
 ### Multi-Layer Verification Pipeline
 
-The system employs a sophisticated 4-layer verification algorithm that combines traditional fact-checking with cutting-edge AI:
+The system employs a sophisticated 4-layer verification algorithm that combines traditional fact-checking with cutting-edge AI technologies:
 
 #### 1. **Source Credibility Assessment (30% weight)**
-- Analyzes historical accuracy and reliability of news sources
-- Evaluates editorial standards and fact-checking practices
-- Assesses independence and potential biases
-- Uses CUDOS ASI Cloud for comprehensive source analysis
+- **Technology**: CUDOS ASI Cloud (distributed AI inference)
+- **Process**: Analyzes historical accuracy and reliability of news sources using machine learning models
+- **Purpose**: Evaluates editorial standards, fact-checking practices, and potential biases through comprehensive source analysis
+- **Output**: Credibility score (0-1) based on source reputation and performance history
 
 #### 2. **Cross-Reference Verification (20% weight)**
-- Searches for corroborating reports across reputable news sites
-- Uses DuckDuckGo API for unbiased search results
-- Analyzes temporal consistency and source diversity
+- **Technology**: DuckDuckGo Search API (privacy-focused web search)
+- **Process**: Searches for corroborating reports across reputable news sites without commercial bias
+- **Purpose**: Analyzes temporal consistency, source diversity, and cross-validation of claims
+- **Output**: Boolean confirmation of corroboration found across multiple independent sources
 
 #### 3. **AI Content Analysis (30% weight)**
-- Leverages CUDOS ASI Cloud for deep content understanding
-- Detects factual accuracy indicators and misinformation patterns
-- Analyzes linguistic patterns and semantic coherence
-- Provides confidence scoring for automated assessment
+- **Technology**: CUDOS ASI Cloud (ASIC-accelerated AI processing)
+- **Process**: Leverages distributed computing for deep content understanding and pattern recognition
+- **Purpose**: Detects factual accuracy indicators, misinformation patterns, and linguistic coherence
+- **Output**: Confidence scoring for automated content assessment and semantic analysis
 
 #### 4. **Media Integrity Check (20% weight)**
-- DeepFace analysis for facial manipulation detection
-- Computer vision algorithms for image/video authenticity
-- Metadata analysis for tampering indicators
-- Blockchain timestamp verification for immutability
+- **Technology**: DeepFace (facial recognition) + TensorFlow/OpenCV (computer vision)
+- **Process**: Analyzes uploaded images/videos for manipulation signs using neural networks
+- **Purpose**: Detects deepfakes, altered content, and metadata tampering indicators
+- **Output**: Authenticity probability score with blockchain timestamp verification for immutability
+
+### MeTTa Knowledge Integration
+- **Technology**: MeTTa (Meta Type Theory symbolic AI)
+- **Process**: Creates structured knowledge atoms and enables logical reasoning about content relationships
+- **Purpose**: Builds self-learning knowledge base for pattern recognition across news domains
+- **Integration**: Processes verification results to improve future accuracy and detect sophisticated disinformation campaigns
 
 ### Integrity Scoring Algorithm
 
@@ -137,7 +144,7 @@ def calculate_integrity_score(report):
 - Geographic visualization of misinformation spread
 - Predictive analytics for emerging disinformation trends
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend Infrastructure
 - **Framework**: FastAPI (Python async web framework)
@@ -194,7 +201,7 @@ tailwindcss==3.4.10
 vite==7.1.2
 ```
 
-## 📋 Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
 - Python 3.11+
@@ -309,7 +316,7 @@ curl -X POST http://localhost:8000/api/news/reports \
 
 3. **View Frontend**: Open `http://localhost:5173` in your browser
 
-## 📊 API Endpoints
+## API Endpoints
 
 ### Core News Integrity APIs
 - `POST /api/news/reports` — Create news report with AI verification
@@ -328,7 +335,7 @@ curl -X POST http://localhost:8000/api/news/reports \
 - `POST /api/blockchain/trigger-payout` — Reward accurate reporters
 - `GET /api/blockchain/transaction/{hash}` — Track blockchain transactions
 
-## 🔍 Key Features
+## Key Features
 
 ### AI-Powered Verification
 - **Multi-source validation** combining web search, AI analysis, and community input
@@ -354,7 +361,7 @@ curl -X POST http://localhost:8000/api/news/reports \
 - **Comprehensive logging** and monitoring
 - **Docker containerization** for deployment
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from developers, journalists, and AI researchers!
 
@@ -372,11 +379,11 @@ We welcome contributions from developers, journalists, and AI researchers!
 - **Blockchain Integration**: Expand smart contract functionality
 - **Internationalization**: Add support for multiple languages
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **CUDOS Blockchain** for ASIC-accelerated AI infrastructure
 - **MeTTa Community** for the symbolic AI framework
