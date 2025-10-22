@@ -338,6 +338,21 @@ We welcome contributions from developers, journalists, and AI researchers!
 4. Run the test suite: `pytest` (backend) and `npm test` (frontend)
 5. Submit a pull request
 
+## screenshots
+### News report submission form
+<img width="680" height="331" alt="image" src="https://github.com/user-attachments/assets/acdf4c30-3134-462c-8736-94e79af0f34e" />
+
+### Verified and trusted decentralized news
+<img width="680" height="384" alt="Screenshot 2025-10-22 134903" src="https://github.com/user-attachments/assets/334705b4-66fb-4a14-bd72-18d9272127f3" />
+
+### Fake news response
+<img width="680" height="384" alt="Screenshot 2025-10-22 135449" src="https://github.com/user-attachments/assets/cc5dc6d5-803c-44b9-bce7-661713a85013" />
+
+### One can view when and where the news was reported and provide verification
+<img width="680" height="331" alt="image" src="https://github.com/user-attachments/assets/52abdff6-15e0-4b99-b735-369d8e2bf694" />
+
+### Tokens are minted to users who issue trusted news to incentivize promotion of verified trusted news content
+<img width="680" height="384" alt="image" src="https://github.com/user-attachments/assets/f45f75a7-87c2-449d-84ed-eb89bd087c1b" />
 
 ## License
 
