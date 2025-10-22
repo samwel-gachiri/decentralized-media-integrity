@@ -117,6 +117,16 @@ async def create_news_report(
         logger.error(f"Error creating news report: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating news report: {str(e)}")
 
+@router.get("/reports", response_model=List[NewsReportResponse])
+async def get_all_news_reports(limit: int = 10):
+    """Get recent news reports from all sources"""
+    try:
+        reports = await news_service.get_recent_reports_all_sources(limit)
+        return reports
+    except Exception as e:
+        logger.error(f"Error getting all news reports: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting all news reports: {str(e)}")
+
 @router.get("/reports/{source}", response_model=List[NewsReportResponse])
 async def get_news_reports(source: str, limit: int = 10):
     """Get recent news reports for a source"""

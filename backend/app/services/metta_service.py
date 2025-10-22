@@ -292,7 +292,15 @@ class NewsIntegrityKnowledgeBase:
                 high_trust_query = f"(high-trust-verify {event_id} {user_id})"
                 high_trust_result = self.run_metta_function(high_trust_query)
                 # give the person the benefit of doubt if they are having high trust score
-                is_verified = high_trust_result[0]
+                if high_trust_result and len(high_trust_result) > 0:
+                    high_trust_raw = high_trust_result[0]
+                    high_trust_str = str(high_trust_raw).strip().lower()
+                    is_verified = high_trust_str == "true" or "high-trust-verify" in high_trust_str
+                    print(f"high-trust verified (raw): {high_trust_raw} -> (str): '{high_trust_str}' -> (bool): {is_verified}")
+            
+            # Ensure verified is always a boolean
+            if not isinstance(is_verified, bool):
+                is_verified = bool(is_verified)
             
             # Get reasoning
             reasoning = self._get_verification_reasoning(event_id, user_id)
@@ -332,18 +340,39 @@ class NewsIntegrityKnowledgeBase:
         trust_result = self.query_atoms(trust_query, "trust", "$score")
         if trust_result:
             try:
-                score = trust_result[0].get('children', [])[2] if 'children' in trust_result[0] else "unknown"
-                reasoning.append(f"User trust score: {score}")
-                if isinstance(score, (int, float)) or (isinstance(score, str) and score.isdigit()):
-                    score_val = int(score) if isinstance(score, str) else score
-                    if score_val >= 60:
-                        reasoning.append("✅ Trust score meets minimum threshold (60)")
-                    else:
-                        reasoning.append("❌ Trust score below minimum threshold (60)")
-            except (IndexError, ValueError):
-                reasoning.append("⚠️ Trust score format unexpected")
-        
-        # Check evidence
+                # Extract score from the result
+                for result_item in trust_result:
+                    if 'children' in result_item and len(result_item['children']) >= 3:
+                        score_raw = result_item['children'][2]
+                        if hasattr(score_raw, 'get_grounded_value'):
+                            score = score_raw.get_grounded_value()
+                        else:
+                            score = str(score_raw)
+                        
+                        # Try to convert to number
+                        try:
+                            if isinstance(score, str) and score.isdigit():
+                                score = int(score)
+                            elif isinstance(score, str) and '.' in score:
+                                score = float(score)
+                        except (ValueError, TypeError):
+                            pass
+                        
+                        reasoning.append(f"User trust score: {score}")
+                        
+                        # Check if score meets threshold
+                        if isinstance(score, (int, float)):
+                            if score >= 60:
+                                reasoning.append("✅ Trust score meets minimum threshold (60)")
+                            else:
+                                reasoning.append("❌ Trust score below minimum threshold (60)")
+                        break
+                else:
+                    reasoning.append("User trust score: unknown")
+            except (IndexError, ValueError, AttributeError) as e:
+                reasoning.append(f"User trust score: unknown (parse error: {e})")
+        else:
+            reasoning.append("User trust score: unknown")
         evidence_query = f"(evidence-link {event_id} $link)"
         evidence_result = self.query_atoms(evidence_query, "event", "$link")
         if evidence_result:
