@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database utility functions for Climate Witness Chain
+Database utility functions for News Integrity
 """
 
 import asyncio
@@ -20,7 +20,7 @@ async def show_stats():
     crud = None
     stats = await crud.get_stats()
     
-    print(" Climate Witness Chain - Database Statistics")
+    print(" News Integrity - Database Statistics")
     print("=" * 50)
     print(f" Total Users: {stats['total_users']}")
     print(f" Total Events: {stats['total_events']}")
@@ -87,7 +87,7 @@ async def create_test_user():
 
 async def main():
     """Main utility function"""
-    print("️ Climate Witness Chain - Database Utilities")
+    print("️ News Integrity - Database Utilities")
     print("=" * 50)
     
     while True:

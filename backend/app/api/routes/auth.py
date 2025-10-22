@@ -1,5 +1,5 @@
 """
-Updated Authentication routes for Climate Witness Chain
+Updated Authentication routes for News Integrity
 Combines JWT token system with simplified database approach
 """
 

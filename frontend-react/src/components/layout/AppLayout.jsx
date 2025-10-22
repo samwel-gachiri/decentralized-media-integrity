@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Menu,
@@ -30,14 +31,14 @@ const AppLayout = ({ children, showNavigation = true, showFooter = true }) => {
 
     const publicNavItems = [
         { path: '/', label: 'Home', icon: Home },
-        { path: '/map', label: 'Map', icon: Map },
+        { path: '/news-map', label: 'Map', icon: Map },
     ];
 
     const authenticatedNavItems = [
-        { path: '/dashboard', label: 'Dashboard', icon: Home },
-        { path: '/submit', label: 'Submit Event', icon: Camera },
-        { path: '/map', label: 'Map', icon: Map },
-        { path: '/metta', label: 'MeTTa', icon: Brain },
+        { path: '/news-dashboard', label: 'Dashboard', icon: Home },
+        { path: '/submit-news', label: 'Report news', icon: Camera },
+        { path: '/news-map', label: 'Map', icon: Map },
+        // { path: '/metta', label: 'MeTTa', icon: Brain },
         { path: '/blockchain', label: 'Blockchain', icon: DollarSign },
         ...(user?.role === 'researcher' ? [
             { path: '/analytics', label: 'Analytics', icon: BarChart3 }
@@ -66,7 +67,7 @@ const AppLayout = ({ children, showNavigation = true, showFooter = true }) => {
                         {/* Logo */}
                         <Link to="/" className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">🌍</span>
+                                <span className="text-white font-bold text-sm">📰</span>
                             </div>
                             <span className="text-xl font-bold text-gray-900 hidden sm:block">
                                 News Integrity Platform
@@ -234,7 +235,7 @@ const AppLayout = ({ children, showNavigation = true, showFooter = true }) => {
                             <div className="col-span-1 md:col-span-2">
                                 <div className="flex items-center space-x-3 mb-4">
                                     <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-lg flex items-center justify-center">
-                                        <span className="text-white font-bold text-sm">🌍</span>
+                                        <span className="text-white font-bold text-sm">📰</span>
                                     </div>
                                     <span className="text-xl font-bold">News Integrity Platform</span>
                                 </div>

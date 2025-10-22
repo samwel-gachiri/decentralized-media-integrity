@@ -50,7 +50,7 @@ const FALLBACK_DATA = {
       title: 'Sample News Report',
       content: 'This is a sample news report shown when the API is unavailable.',
       source: 'Sample Source',
-      category: 'general',
+      category: 'technology',
       integrity_level: 'pending',
       timestamp: new Date().toISOString(),
       verification_score: 0.5

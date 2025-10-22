@@ -1,6 +1,6 @@
 """
 Community Verification API Routes
-Handles community-based verification endpoints for the Climate Witness DAO
+Handles community-based verification endpoints for the News Integrity DAO
 """
 
 from fastapi import APIRouter, Depends, HTTPException

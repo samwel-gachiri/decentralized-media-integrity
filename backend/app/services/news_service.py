@@ -73,7 +73,7 @@ class CUDOSASIClient:
 
         async with aiohttp.ClientSession(
             headers=self.headers,
-            timeout=aiohttp.ClientTimeout(total=300)  # 5 minute timeout
+            timeout=aiohttp.ClientTimeout(total=600)  # 10 minute timeout
         ) as session:
             try:
                 payload = {
@@ -149,8 +149,15 @@ class NewsService:
             verification_score = await self._calculate_verification_score(report_data)
             deepfake_prob = await self._check_deepfake_probability(report_data.media_url) if report_data.media_url else None
 
+            # Get content analysis for integrity level determination
+            content_analysis = await self._analyze_content_with_cudos(
+                report_data.content,
+                report_data.title,
+                report_data.url
+            )
+
             # Determine integrity level
-            integrity_level = self._determine_integrity_level(verification_score, deepfake_prob)
+            integrity_level = self._determine_integrity_level(verification_score, deepfake_prob, content_analysis)
 
             # Save to database
             db_report = NewsReport(
@@ -177,8 +184,22 @@ class NewsService:
             if integrity_level == "verified" and verification_score > 0.8:
                 await self._store_verified_content_on_cudos(db_report.id, report_data.dict())
 
+            # Perform URL verification if URL is provided
+            url_verification = None
+            if report_data.url:
+                url_verification = await self._verify_content_against_url(report_data.content, report_data.url)
+
             # Submit to MeTTa service asynchronously
-            metta_result = await self.metta_client.submit_news_report(report_data)
+            metta_result = await self.metta_client.submit_news_report(report_data, content_analysis)
+            logger.info(f"MeTTa service response: {metta_result}")
+
+            # Use MeTTa verification result to override integrity level if MeTTa confirms verification
+            if metta_result and metta_result.get('verified') is True:
+                logger.info("MeTTa verification confirmed - overriding integrity level to VERIFIED")
+                integrity_level = IntegrityLevelEnum.verified
+                # Update the database record with the new integrity level
+                db_report.integrity_level = integrity_level.value
+                db.commit()
 
             # Check for integrity alerts and create alerts
             if 'analysis' in metta_result and 'alerts' in metta_result['analysis']:
@@ -210,24 +231,56 @@ class NewsService:
         finally:
             db.close()
 
-    async def _calculate_verification_score(self, report_data: NewsReportCreate) -> float:
-        """Calculate verification score using multiple sources including CUDOS AI"""
-        score = 0.5  # Base score
+    async def _calculate_verification_score(self, report_data: NewsReportCreate, url_verification: Optional[Dict] = None) -> float:
+        """Calculate verification score using multiple sources including enhanced CUDOS AI"""
+        score = 0.6  # Increased base score - give benefit of the doubt
 
         # Check source credibility
         source_credibility = await self._get_source_credibility(report_data.source)
-        score += source_credibility * 0.3
+        score += source_credibility * 0.15  # Reduced weight further
 
-        # Cross-reference with DuckDuckGo search
-        search_results = self.ddg_search.text(f'"{report_data.title}" site:reputable-news-sites', max_results=5)
-        if search_results:
-            score += 0.2
+        # URL content verification if URL verification data is provided
+        if url_verification:
+            score += url_verification.get('content_match_score', 0) * 0.3
+        else:
+            # Cross-reference with DuckDuckGo search and analyze results
+            search_results = self.ddg_search.text(f'"{report_data.title}" site:reputable-news-sites', max_results=5)
+            if search_results:
+                # Analyze search results for relevance and support
+                search_support_score = await self._analyze_search_results_support(
+                    report_data.content, report_data.title, search_results
+                )
+                score += search_support_score * 0.25  # Increased weight for analyzed results
+                logger.info(f"DuckDuckGo search support score: {search_support_score}")
 
-        # Content analysis via CUDOS ASI Cloud
-        content_analysis = await self._analyze_content_with_cudos(report_data.content)
-        score += content_analysis.get('integrity_score', 0) * 0.3
+        # Enhanced content analysis via CUDOS ASI Cloud with fact-checking
+        content_analysis = await self._analyze_content_with_cudos(
+            report_data.content,
+            report_data.title,
+            report_data.url
+        )
 
-        return min(score, 1.0)
+        # Use factual accuracy and integrity score from AI analysis
+        factual_accuracy = content_analysis.get('factual_accuracy', 0.5)
+        integrity_score = content_analysis.get('integrity_score', 0.5)
+        confidence = content_analysis.get('confidence', 0.5)
+        recommendation = content_analysis.get('recommendation', 'questionable')
+
+        # Weight the AI analysis heavily but reasonably
+        ai_score = (factual_accuracy + integrity_score + confidence) / 3
+        score += ai_score * 0.5  # Reduced AI weight to allow other factors
+
+        # Adjust score based on recommendation (less aggressive adjustments)
+        if recommendation == 'verified':
+            score = min(1.0, score + 0.15)
+        elif recommendation == 'debunked':
+            score = max(0.0, score - 0.2)
+        elif recommendation == 'questionable':
+            score = max(0.0, score - 0.05)  # Much smaller penalty
+
+        logger.info(f"Verification score calculation: {score} (factual: {factual_accuracy}, integrity: {integrity_score}, confidence: {confidence}, recommendation: {recommendation})")
+
+        return min(max(score, 0.0), 1.0)
 
     async def _check_deepfake_probability(self, media_url: str) -> float:
         """Check if media content is likely deepfake using DeepFace"""
@@ -264,29 +317,54 @@ class NewsService:
             logging.error(f"Deepfake detection failed: {str(e)}")
             return 0.0
 
-    async def _analyze_content_with_cudos(self, content: str) -> Dict[str, Any]:
-        """Analyze content integrity using CUDOS ASI Cloud"""
+    async def _analyze_content_with_cudos(self, content: str, title: str = "", url: str = "") -> Dict[str, Any]:
+        """Analyze content integrity using CUDOS ASI Cloud with fact-checking"""
         analysis_prompt = f"""
-        Analyze the integrity and authenticity of this news content:
+        Analyze the following news content for factual accuracy and integrity:
 
+        Title: {title}
         Content: {content}
+        URL: {url}
 
-        Provide analysis covering:
-        1. Factual accuracy indicators
-        2. Potential misinformation signs
-        3. Source credibility assessment
-        4. Overall integrity score (0-1)
-        5. Confidence in assessment
+        IMPORTANT CONTEXT:
+        - Web searches have been performed to cross-reference this information
+        - Finding related content on reputable sites indicates credibility
+        - Do NOT require "independent verification" beyond web search results
 
-        Respond in JSON format.
+        Provide a detailed analysis covering:
+        1. Factual accuracy assessment (0-1 scale)
+        2. Potential misinformation indicators
+        3. Source credibility evaluation
+        4. Cross-reference with known facts
+        5. Overall integrity score (0-1)
+        6. Confidence in assessment (0-1)
+        7. Recommendation (verified/questionable/debunked)
+
+        GUIDANCE:
+        - If web searches found supporting information, increase confidence accordingly
+        - Be reasonable about requiring "proof" - web search results ARE the verification
+        - Only mark as "debunked" if there's clear contradictory evidence
+
+        IMPORTANT: Do NOT flag domain/URL credibility issues in red_flags - domain analysis is handled separately.
+        Focus red_flags on content-specific issues like factual inaccuracies, contradictions, or manipulation indicators.
+
+        Respond with JSON format:
+        {{
+            "factual_accuracy": 0.XX,
+            "integrity_score": 0.XX,
+            "confidence": 0.XX,
+            "recommendation": "verified|questionable|debunked",
+            "red_flags": ["list", "of", "content-specific", "issues"],
+            "assessment": "brief explanation"
+        }}
         """
 
         try:
             request = CUDOSInferenceRequest(
                 model=self.preferred_models['analysis'],
                 prompt=analysis_prompt,
-                max_tokens=1000,
-                temperature=0.3  # Lower temperature for analytical tasks
+                max_tokens=1500,
+                temperature=0.1  # Very low temperature for factual analysis
             )
 
             response = await self.cudos_client.create_inference(request)
@@ -296,13 +374,30 @@ class NewsService:
 
                 try:
                     analysis_result = json.loads(analysis_text)
+                    logger.info(f"CUDOS content analysis result: {analysis_result}")
                     return analysis_result
                 except json.JSONDecodeError:
-                    # Fallback parsing
+                    # Try to extract JSON from markdown code blocks
+                    import re
+                    json_match = re.search(r'```json\s*\n(.*?)\n```', analysis_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            analysis_result = json.loads(json_match.group(1))
+                            logger.info(f"CUDOS content analysis result (extracted from markdown): {analysis_result}")
+                            return analysis_result
+                        except json.JSONDecodeError:
+                            pass
+
+                    # Fallback parsing for non-JSON responses
+                    logger.warning(f"Non-JSON response from CUDOS: {analysis_text}")
                     return {
                         "integrity_score": 0.5,
-                        "confidence": 0.5,
-                        "raw_analysis": analysis_text
+                        "factual_accuracy": 0.5,
+                        "confidence": 0.3,
+                        "recommendation": "questionable",
+                        "red_flags": ["Unable to parse AI analysis"],
+                        "assessment": "Analysis inconclusive",
+                        "raw_response": analysis_text
                     }
             else:
                 return {"integrity_score": 0.5, "error": "No response from CUDOS"}
@@ -310,6 +405,98 @@ class NewsService:
         except Exception as e:
             logger.error(f"CUDOS content analysis failed: {str(e)}")
             return {"integrity_score": 0.5, "error": str(e)}
+
+    async def _verify_content_against_url(self, submitted_content: str, url: str) -> Dict[str, Any]:
+        """Verify submitted content against the content at the provided URL using CUDOS ASI"""
+        try:
+            # Fetch content from URL
+            import requests
+            from bs4 import BeautifulSoup
+
+            response = requests.get(url, timeout=15, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            })
+
+            if response.status_code != 200:
+                return {"content_match_score": 0.0, "error": f"Failed to fetch URL: {response.status_code}"}
+
+            # Extract text content from HTML
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.extract()
+
+            # Get text content
+            url_content = soup.get_text(separator=' ', strip=True)
+
+            # Limit content length for API
+            url_content = url_content[:4000]  # Limit to first 4000 characters
+            submitted_content = submitted_content[:2000]  # Limit submitted content
+
+            # Use CUDOS ASI to compare contents
+            comparison_prompt = f"""
+            Compare the submitted news content with the content extracted from the provided URL.
+
+            Submitted Content: "{submitted_content}"
+
+            URL Content: "{url_content}"
+
+            Analyze:
+            1. Content similarity (0-1 scale)
+            2. Factual consistency between submitted and URL content
+            3. Whether the submitted content accurately represents what's on the URL
+            4. Confidence in the match assessment
+
+            Respond with JSON: {{
+                "content_match_score": 0.XX,
+                "factual_consistency": 0.XX,
+                "accurate_representation": true/false,
+                "confidence": 0.XX,
+                "explanation": "brief explanation of the assessment"
+            }}
+            """
+
+            request = CUDOSInferenceRequest(
+                model=self.preferred_models['analysis'],
+                prompt=comparison_prompt,
+                max_tokens=800,
+                temperature=0.1  # Low temperature for factual comparison
+            )
+
+            response = await self.cudos_client.create_inference(request)
+
+            if response.choices:
+                comparison_text = response.choices[0].get('message', {}).get('content', '')
+
+                try:
+                    comparison_result = json.loads(comparison_text)
+                    return comparison_result
+                except json.JSONDecodeError:
+                    # Try to extract JSON from markdown code blocks
+                    import re
+                    json_match = re.search(r'```json\s*\n(.*?)\n```', comparison_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            comparison_result = json.loads(json_match.group(1))
+                            return comparison_result
+                        except json.JSONDecodeError:
+                            pass
+
+                    # Fallback parsing
+                    return {
+                        "content_match_score": 0.3,
+                        "factual_consistency": 0.3,
+                        "accurate_representation": False,
+                        "confidence": 0.5,
+                        "explanation": f"Could not parse AI response: {comparison_text[:200]}"
+                    }
+            else:
+                return {"content_match_score": 0.0, "error": "No response from CUDOS comparison"}
+
+        except Exception as e:
+            logger.error(f"URL content verification failed: {str(e)}")
+            return {"content_match_score": 0.0, "error": str(e)}
 
     async def _store_verified_content_on_cudos(self, report_id: int, content: Dict):
         """Store verified news content using CUDOS ASI Cloud for additional analysis"""
@@ -355,13 +542,30 @@ class NewsService:
             logger.error(f"CUDOS verification failed: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def _determine_integrity_level(self, verification_score: float, deepfake_prob: Optional[float]) -> IntegrityLevelEnum:
-        """Determine integrity level based on scores"""
+    def _determine_integrity_level(self, verification_score: float, deepfake_prob: Optional[float], content_analysis: Optional[Dict] = None) -> IntegrityLevelEnum:
+        """Determine integrity level based on scores and AI analysis"""
+        # Check for AI recommendation first
+        if content_analysis:
+            recommendation = content_analysis.get('recommendation', '').lower()
+            confidence = content_analysis.get('confidence', 0.5)
+
+            # If AI is confident in its assessment, use the recommendation
+            if confidence > 0.7:
+                if recommendation == 'debunked':
+                    return IntegrityLevelEnum.debunked
+                elif recommendation == 'verified':
+                    return IntegrityLevelEnum.verified
+                elif recommendation == 'questionable':
+                    return IntegrityLevelEnum.questionable
+
+        # Fallback to score-based determination with more reasonable thresholds
         if deepfake_prob and deepfake_prob > 0.7:
             return IntegrityLevelEnum.debunked
-        elif verification_score > 0.8:
+        elif verification_score > 0.7:  # Lowered from 0.8
             return IntegrityLevelEnum.verified
-        elif verification_score < 0.3:
+        elif verification_score > 0.4:  # Added middle range
+            return IntegrityLevelEnum.pending
+        elif verification_score < 0.4:  # Raised from 0.3
             return IntegrityLevelEnum.questionable
         else:
             return IntegrityLevelEnum.pending
@@ -733,6 +937,16 @@ class NewsService:
                     credibility_result = json.loads(credibility_text)
                     return credibility_result.get('credibility_score', 0.5)
                 except json.JSONDecodeError:
+                    # Try to extract JSON from markdown code blocks
+                    import re
+                    json_match = re.search(r'```json\s*\n(.*?)\n```', credibility_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            credibility_result = json.loads(json_match.group(1))
+                            return credibility_result.get('credibility_score', 0.5)
+                        except json.JSONDecodeError:
+                            pass
+
                     # Extract score from text if JSON parsing fails
                     import re
                     score_match = re.search(r'(\d+\.\d+)', credibility_text)
@@ -745,3 +959,87 @@ class NewsService:
         except Exception as e:
             logger.warning(f"⚠️ Source credibility assessment failed: {str(e)}. Using default score.")
             return 0.5
+
+    async def _analyze_search_results_support(self, content: str, title: str, search_results: List[Dict]) -> float:
+        """Analyze DuckDuckGo search results to determine support for the news claim"""
+        if not search_results:
+            return 0.0
+
+        # Extract relevant text from search results
+        search_texts = []
+        for result in search_results:
+            title_text = result.get('title', '')
+            body_text = result.get('body', '')
+            search_texts.append(f"{title_text} {body_text}")
+
+        combined_search_text = ' '.join(search_texts)[:2000]  # Limit for API
+
+        analysis_prompt = f"""
+        Analyze how well the following search results support or contradict this news claim:
+
+        NEWS CLAIM:
+        Title: {title}
+        Content: {content}
+
+        SEARCH RESULTS:
+        {combined_search_text}
+
+        Evaluate:
+        1. Do the search results mention similar events/topics?
+        2. Do they provide evidence supporting the claim?
+        3. Do they contradict the claim?
+        4. Overall level of support (0-1 scale)
+
+        Consider that finding related results on reputable sites indicates some level of credibility,
+        even if exact details aren't verified.
+
+        Respond with JSON: {{
+            "support_score": 0.XX,
+            "mentions_similar": true/false,
+            "provides_evidence": true/false,
+            "contradicts": false,
+            "assessment": "brief explanation"
+        }}
+        """
+
+        try:
+            request = CUDOSInferenceRequest(
+                model=self.preferred_models['analysis'],
+                prompt=analysis_prompt,
+                max_tokens=600,
+                temperature=0.1
+            )
+
+            response = await self.cudos_client.create_inference(request)
+
+            if response.choices:
+                analysis_text = response.choices[0].get('message', {}).get('content', '')
+
+                try:
+                    analysis_result = json.loads(analysis_text)
+                    support_score = analysis_result.get('support_score', 0.3)
+                    logger.info(f"Search results analysis: {support_score} - {analysis_result.get('assessment', '')}")
+                    return support_score
+                except json.JSONDecodeError:
+                    # Try to extract JSON from markdown code blocks
+                    import re
+                    json_match = re.search(r'```json\s*\n(.*?)\n```', analysis_text, re.DOTALL)
+                    if json_match:
+                        try:
+                            analysis_result = json.loads(json_match.group(1))
+                            support_score = analysis_result.get('support_score', 0.3)
+                            logger.info(f"Search results analysis (extracted from markdown): {support_score} - {analysis_result.get('assessment', '')}")
+                            return support_score
+                        except json.JSONDecodeError:
+                            pass
+
+                    logger.warning(f"Could not parse search analysis: {analysis_text}")
+                    # If we found results but couldn't analyze, give moderate support
+                    return 0.4 if search_results else 0.0
+
+            return 0.2  # Minimal support if analysis failed but results exist
+
+        except Exception as e:
+            logger.error(f"Search results analysis failed: {str(e)}")
+            # If analysis fails but we have search results, give some benefit of the doubt
+            return 0.3 if search_results else 0.0

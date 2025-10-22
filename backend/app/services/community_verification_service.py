@@ -1,5 +1,5 @@
 """
-Community Verification Service for Climate Witness DAO
+Community Verification Service for News Integrity DAO
 Handles community-based verification, consensus mechanisms, and verifier management
 """
 
@@ -114,7 +114,7 @@ class CommunityVerificationService:
         try:
             # Query MeTTa for assignments
             assignments_query = f'(verification-assignment {verifier_id} $event-id $status)'
-            assignments = self.metta_service.query_atom_space('trust', assignments_query)
+            assignments = self.metta_service.query_atom_space('identity', assignments_query)
             
             # Get event details for each assignment
             assignment_details = []
@@ -261,14 +261,14 @@ class CommunityVerificationService:
         """Create a verification assignment"""
         user = await crud.get_user_by_id(verifier_id)
         assignment_atom = f'(verification-assignment {verifier_id} {event_id} "pending")'
-        self.metta_service.add_to_atom_space('trust', assignment_atom)
+        self.metta_service.add_to_atom_space('identity', assignment_atom)
     
     async def _get_verifier_weight(self, verifier_id: str) -> float:
         """Get verifier weight from MeTTa logic"""
         try:
             # Query MeTTa for verifier weight
             weight_query = f'(verifier-weight {verifier_id} $weight)'
-            weight_result = self.metta_service.query_atom_space('trust', weight_query)
+            weight_result = self.metta_service.query_atom_space('identity', weight_query)
 
             if weight_result:
                 # Extract weight from result (simplified)
@@ -353,7 +353,7 @@ class CommunityVerificationService:
                 
                 # Add trust update atom to MeTTa
                 trust_update_atom = f'(trust-score-update {verifier_id} {delta} "verification-feedback")'
-                self.metta_service.add_to_atom_space('trust', trust_update_atom)
+                self.metta_service.add_to_atom_space('identity', trust_update_atom)
                 
         except Exception as e:
             print(f"Error updating verifier trust score: {e}")

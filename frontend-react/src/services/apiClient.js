@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Create axios instance
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
-    timeout: 15000, // Increased timeout
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+    timeout: 300000, // Increased timeout to 5 minutes for AI processing
     retry: 3,
     retryDelay: 1000,
     headers: {
@@ -40,10 +40,9 @@ apiClient.interceptors.response.use(
             try {
                 const refreshToken = localStorage.getItem('news_integrity_refresh_token');
                 if (refreshToken) {
-                    // Try to refresh the token - fix the baseURL here
-                    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/';
+                    // Try to refresh the token
                     const response = await axios.post(
-                        `${baseURL}/auth/refresh`,
+                        `${apiClient.defaults.baseURL}/auth/refresh`,
                         { refresh_token: refreshToken }
                     );
 

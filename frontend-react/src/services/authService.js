@@ -227,7 +227,7 @@ class AuthService {
                     token: 'guest_token',
                     fallbackMode: true,
                     isGuest: true,
-                    message: 'Access granted in offline demo mode. Some features may be limited.'
+                    message: ''
                 };
             }
         } catch (error) {

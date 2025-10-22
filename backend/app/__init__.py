@@ -1,1 +1,1 @@
-# Climate Witness Chain Backend
+# News Integrity Backend

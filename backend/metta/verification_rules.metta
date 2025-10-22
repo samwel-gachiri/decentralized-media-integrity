@@ -4,7 +4,7 @@
 (= (auto-verify-news $news $user $content_confidence $source_confidence)
      (unique(let*
           (
-          ($trust_score (match &trust-space (trust-score $user $score) $score))
+          ($trust_score (match &identity (trust-score $user $score) $score))
           ($is_qualified (>= $trust_score 70))
                ($data_qualified (and
                (>= $content_confidence 70)
@@ -18,7 +18,7 @@
      (= (high-trust-verify-news $news $user)
           (unique(let*
                (
-               ($trust_score (match &trust-space (trust-score $user $score) $score))
+               ($trust_score (match &identity (trust-score $user $score) $score))
                ($is_qualified (>= $trust_score 85))
                )
                $is_qualified
@@ -33,7 +33,7 @@
           ; Misinformation pattern detection
      (= (detect-misinformation $news $pattern_type)
      (if (and (content-analysis $news $analysis)
-     (match &misinformation-space (pattern-match $analysis $pattern_type) $pattern_type))
+     (match &verification (pattern-match $analysis $pattern_type) $pattern_type))
      (misinformation-flagged $news $pattern_type)
      (content-verified $news)))
 
@@ -41,8 +41,8 @@
      (= (assess-source-credibility $source $score)
           (unique(let*
                (
-               ($historical_reports (match &news-space (source-reports $source $count) $count))
-               ($verified_ratio (match &news-space (verified-ratio $source $ratio) $ratio))
+               ($historical_reports (match &content (source-reports $source $count) $count))
+               ($verified_ratio (match &content (verified-ratio $source $ratio) $ratio))
                ($final_score (* $verified_ratio 0.7 (+ 0.3 (/ $historical_reports (+ $historical_reports 10)))))
                )
                $final_score
@@ -57,7 +57,7 @@
           ; Integrity alert trigger
      (= (trigger-integrity-alert $source $alert_type)
      (if (and (source-analysis $source $analysis)
-     (match &alert-space (alert-condition $analysis $alert_type) $alert_type))
+     (match &verification (alert-condition $analysis $alert_type) $alert_type))
      (alert-triggered $source $alert_type)
      False))
 

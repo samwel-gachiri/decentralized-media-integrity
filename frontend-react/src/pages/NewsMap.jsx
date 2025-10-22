@@ -88,7 +88,7 @@ const createNewsIcon = (integrityLevel, category) => {
     health: '🏥',
     environment: '🌱',
     social: '👥',
-    international: '🌍',
+    international: '📰',
     local: '🏠'
   };
 
@@ -202,7 +202,7 @@ const NewsMap = () => {
       health: '🏥',
       environment: '🌱',
       social: '👥',
-      international: '🌍',
+      international: '📰',
       local: '🏠'
     };
     return emojis[category] || '📰';

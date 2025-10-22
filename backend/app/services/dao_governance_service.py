@@ -1,5 +1,5 @@
 """
-Simple DAO Governance Service for Climate Witness DAO
+Simple DAO Governance Service for News Integrity DAO
 Demonstrates community governance for climate relief funding
 """
 

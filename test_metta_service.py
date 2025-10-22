@@ -35,7 +35,7 @@ def test_metta_service():
     # Test 2: query_knowledge_base
     print("\n🔍 Testing query_knowledge_base():")
     try:
-        results = service.query_knowledge_base("(user $x)", "trust")
+        results = service.query_knowledge_base("(user $x)", "identity")
         print(f"Return type: {type(results)}")
         print(f"Length: {len(results)}")
         print(f"Sample results: {results[:3] if results else 'Empty'}")
@@ -45,7 +45,7 @@ def test_metta_service():
     # Test 3: query_atom_space
     print("\n🔍 Testing query_atom_space():")
     try:
-        results = service.query_atom_space("trust", "(user $x)")
+        results = service.query_atom_space("identity", "(user $x)")
         print(f"Return type: {type(results)}")
         print(f"Length: {len(results)}")
         if results:
@@ -67,7 +67,7 @@ def test_metta_service():
     # Test 5: add_to_atom_space
     print("\n➕ Testing add_to_atom_space():")
     try:
-        result = service.add_to_atom_space("trust", "(test-atom test-value)")
+        result = service.add_to_atom_space("identity", "(test-atom test-value)")
         print(f"Return type: {type(result)}")
         print(f"Return value: {result}")
     except Exception as e:

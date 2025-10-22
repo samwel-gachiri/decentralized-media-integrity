@@ -199,7 +199,7 @@ const handleSignUpError = (err) => {
             transition={{ delay: 0.2 }}
             className="text-3xl font-bold text-gray-900 mb-2"
           >
-            Join Climate Witness
+            Join News Integrity
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}

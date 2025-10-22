@@ -74,12 +74,6 @@ const SignInForm = ({ onSuccess, onError }) => {
                 if (result.fallbackMode) {
                     setUsingFallback(true);
                 }
-                if (result.isGuest) {
-                    // Show guest access message
-                    setTimeout(() => {
-                        alert(result.message || 'Access granted in offline demo mode. Some features may be limited.');
-                    }, 500);
-                }
                 onSuccess?.(result.user);
             } else {
                 onError?.(result.error);
@@ -112,7 +106,7 @@ const SignInForm = ({ onSuccess, onError }) => {
                         transition={{ delay: 0.3 }}
                         className="text-gray-600"
                     >
-                        Sign in to your Climate Witness account
+                        Sign in to your News Integrity account
                     </motion.p>
                 </div>
 
@@ -126,51 +120,19 @@ const SignInForm = ({ onSuccess, onError }) => {
                     </motion.div>
                 )}
 
-                {usingFallback && !hasFallbackCredentials && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"
-                    >
-                        <div className="flex items-center">
-                            <WifiOff className="w-5 h-5 text-green-600 mr-2" />
-                            <div>
-                                <p className="text-green-800 text-sm font-medium">Demo Access Granted</p>
-                                <p className="text-green-600 text-xs">Access granted in offline demo mode. Some features may be limited.</p>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
                 {hasFallbackCredentials && !usingFallback && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg"
                     >
-                        <div className="flex items-center">
+                        {/* <div className="flex items-center">
                             <Wifi className="w-5 h-5 text-green-600 mr-2" />
                             <div>
                                 <p className="text-green-800 text-sm font-medium">Offline Login Available</p>
                                 <p className="text-green-600 text-xs">Cached credentials found. You can login even if the server is unavailable.</p>
                             </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {!hasFallbackCredentials && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg"
-                    >
-                        <div className="flex items-center">
-                            <WifiOff className="w-5 h-5 text-amber-600 mr-2" />
-                            <div>
-                                <p className="text-amber-800 text-sm font-medium">Demo Mode Available</p>
-                                <p className="text-amber-600 text-xs">No cached credentials found. If the server is unavailable, you'll get demo access to explore the platform.</p>
-                            </div>
-                        </div>
+                        </div> */}
                     </motion.div>
                 )}
 

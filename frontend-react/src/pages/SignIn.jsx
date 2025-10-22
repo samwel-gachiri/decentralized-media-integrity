@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import SignInForm from '../components/auth/SignInForm';
 import { useAuth } from '../hooks/useAuth';
@@ -19,6 +20,7 @@ const SignIn = () => {
         }
     }, [isAuthenticated, navigate, location]);
 
+    // eslint-disable-next-line no-unused-vars
     const handleSignInSuccess = (user) => {
         const from = location.state?.from?.pathname || '/dashboard';
         navigate(from, { replace: true });
@@ -56,7 +58,7 @@ const SignIn = () => {
                         transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                         className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-full flex items-center justify-center mb-6"
                     >
-                        <span className="text-2xl">🌍</span>
+                        <span className="text-2xl">📰</span>
                     </motion.div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
                         News Integrity Platform

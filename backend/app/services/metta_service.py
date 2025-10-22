@@ -33,23 +33,32 @@ class NewsIntegrityKnowledgeBase:
         self.load_base_knowledge()
     
     def _initialize_atom_spaces(self):
-        """Initialize multiple atom spaces for different domains"""
+        """Initialize multiple atom spaces for different domains in news integrity system"""
         try:
-            # Create specialized atom spaces
-            self.metta.run('!(bind! &event-space (new-space))')
-            self.metta.run('!(bind! &trust-space (new-space))')
-            self.metta.run('!(bind! &economic-space (new-space))')
-            self.metta.run('!(bind! &governance-space (new-space))')
-            self.metta.run('!(bind! &prediction-space (new-space))')
-            
+            # Create specialized atom spaces for news integrity domains
+            # Identity/Trust Space: Users, trust scores, reputation, verification history
+            self.metta.run('!(bind! &identity (new-space))')
+
+            # Content/Media Space: News reports, content, sources, media evidence, categories
+            self.metta.run('!(bind! &content (new-space))')
+
+            # Verification/Analysis Space: Integrity scores, verification results, AI analysis
+            self.metta.run('!(bind! &verification (new-space))')
+
+            # Economic/Incentive Space: Wallets, payouts, rewards, blockchain transactions
+            self.metta.run('!(bind! &economic (new-space))')
+
+            # Temporal/Context Space: Timestamps, locations, trends, historical patterns
+            self.metta.run('!(bind! &temporal (new-space))')
+
             self.atom_spaces = {
-                'event': '&event-space',
-                'trust': '&trust-space',
-                'economic': '&economic-space',
-                'governance': '&governance-space',
-                'prediction': '&prediction-space'
+                'identity': '&identity',
+                'content': '&content',
+                'verification': '&verification',
+                'economic': '&economic',
+                'temporal': '&temporal'
             }
-            logger.info("✅ Initialized multiple atom spaces")
+            logger.info("✅ Initialized domain-specific atom spaces for news integrity")
         except Exception as e:
             logger.error(f"❌ Error initializing atom spaces: {str(e)}")
             raise
@@ -117,13 +126,12 @@ class NewsIntegrityKnowledgeBase:
                 query = f"!(match {space_ref} {query_str} {response})"
             else:
                 query = f"!(match &self {query_str} {response})"
-            print(f'Query: {query}')   
+            print(f'🔎MeTTa Query: {query}')
             result = self.metta.run(query)
-            # print(f'query res: {result} and space consists: \n{self.metta.run(f'!(match {space_ref} $x $x)')}')
-            # print(f'query res: {result}')
+            print(f'MeTTa Result: {result}')
             return self._parse_query_result(result)
         except Exception as e:
-            logger.error(f"   ❌ Error querying {query_str}: {str(e)}")
+            logger.error(f"Error querying {query_str}: {str(e)}")
             return []
     
     def run_metta_function(self, query_str: str) -> List[Any]:
@@ -132,10 +140,9 @@ class NewsIntegrityKnowledgeBase:
             # Prepend '!' only if query_str does not already start with '!'
             query = query_str if query_str.strip().startswith('!') else f'!{query_str.strip()}'
 
-            print(f'Query: {query}') 
+            print(f'⚡ MeTTa Function: {query}') 
             result = self.metta.run(query, flat=True)
-            # print(f'query res: {result} and space consists: \n{self.metta.run(f'!(match {space_ref} $x $x)')}')
-            # print(f'query res: {result}')
+            print(f'MeTTa Function Result: {result}')
             return result
         except Exception as e:
             logger.error(f"   ❌ Error querying {query_str}: {str(e)}")
@@ -162,95 +169,95 @@ class NewsIntegrityKnowledgeBase:
         return parsed_results
     
     def create_user_atoms(self, user: User) -> List[str]:
-        """Create MeTTa atoms for a user and add them to the space"""
+        """Create MeTTa atoms for a user and add them to appropriate spaces"""
         atoms = []
-        
-        # User identity atom
+
+        # User identity atom - goes to identity space
         user_atom = f"(user {user.id})"
         atoms.append(user_atom)
-        self.add_atom(user_atom, "trust")
-        
-        # Location atom
+        self.add_atom(user_atom, "identity")
+
+        # Location atom - goes to temporal space (location context)
         if user.location_region:
             location_atom = f"(location {user.id} \"{user.location_region}\")"
             atoms.append(location_atom)
-            self.add_atom(location_atom, "event")
-        
-        # Trust score atom
+            self.add_atom(location_atom, "temporal")
+
+        # Trust score atom - goes to identity space
         trust_atom = f"(trust-score {user.id} {user.trust_score})"
         atoms.append(trust_atom)
-        self.add_atom(trust_atom, "trust")
-        
-        # Wallet atom
+        self.add_atom(trust_atom, "identity")
+
+        # Wallet atom - goes to economic space
         if user.wallet_address:
             wallet_atom = f"(wallet-address {user.id} \"{user.wallet_address}\")"
             atoms.append(wallet_atom)
             self.add_atom(wallet_atom, "economic")
-        
+
         return atoms
     
     def create_news_atoms(self, news_report: 'NewsReport', user: 'User') -> Tuple[List[str], str]:
-        """Create MeTTa atoms for a news report and add them to the space"""
+        """Create MeTTa atoms for a news report and distribute across appropriate spaces"""
         atoms = []
-        
+
         # Create a unique news ID for MeTTa
         news_id = f"{news_report.category}_{news_report.id[:8]}"
-        
-        # News identity atom
+
+        # News identity atom - content space
         news_atom = f"(news {news_id})"
         atoms.append(news_atom)
-        self.add_atom(news_atom, "event")
-        
-        # Reporter relationship
+        self.add_atom(news_atom, "content")
+
+        # Reporter relationship - identity space (connects user to content)
         reports_atom = f"(reports {user.id} {news_id})"
         atoms.append(reports_atom)
-        self.add_atom(reports_atom, "event")
-        
-        # News category
+        self.add_atom(reports_atom, "identity")
+
+        # News category - content space
         category_atom = f"(news-category {news_id} {news_report.category})"
         atoms.append(category_atom)
-        self.add_atom(category_atom, "event")
-        
-        # Timestamp
+        self.add_atom(category_atom, "content")
+
+        # Timestamp - temporal space
         if news_report.timestamp:
             timestamp_atom = f"(timestamp {news_id} \"{news_report.timestamp.isoformat()}\")"
             atoms.append(timestamp_atom)
-            self.add_atom(timestamp_atom, "event")
-        
-        # GPS coordinates
+            self.add_atom(timestamp_atom, "temporal")
+
+        # GPS coordinates - temporal space (location context)
         if news_report.latitude and news_report.longitude:
             coords_atom = f"(gps-coords {news_id} ({news_report.latitude} {news_report.longitude}))"
             atoms.append(coords_atom)
-            self.add_atom(coords_atom, "event")
-        
-        # Media URL (evidence link)
+            self.add_atom(coords_atom, "temporal")
+
+        # Media URL (evidence link) - content space
         if news_report.media_url:
             evidence_atom = f"(evidence-link {news_id} \"{news_report.media_url}\")"
             atoms.append(evidence_atom)
-            self.add_atom(evidence_atom, "event")
-            
-            # Media timestamp (same as news for now)
+            self.add_atom(evidence_atom, "content")
+
+            # Media timestamp (same as news for now) - temporal space
             media_timestamp_atom = f"(media-timestamp {news_id} \"{news_report.timestamp.isoformat()}\")"
             atoms.append(media_timestamp_atom)
-            self.add_atom(media_timestamp_atom, "event")
-        
-        # Content
+            self.add_atom(media_timestamp_atom, "temporal")
+
+        # Content - content space
         if news_report.content:
             content_atom = f"(content {news_id} \"{news_report.content[:200]}...\")"
             atoms.append(content_atom)
-            self.add_atom(content_atom, "event")
-        
-        # Source
+            self.add_atom(content_atom, "content")
+
+        # Source - content space
         if news_report.source:
             source_atom = f"(news-source {news_id} \"{news_report.source}\")"
             atoms.append(source_atom)
-            self.add_atom(source_atom, "event")
-        
-        # Integrity level
+            self.add_atom(source_atom, "content")
+
+        # Integrity level - verification space
         integrity_atom = f"(integrity-level {news_id} {news_report.integrity_level})"
         atoms.append(integrity_atom)
-        self.add_atom(integrity_atom, "event")
-        
+        self.add_atom(integrity_atom, "verification")
+
         return atoms, news_id
     
     def _determine_impact_severity(self, event: Event) -> Tuple[Optional[str], Optional[str]]:
@@ -266,60 +273,106 @@ class NewsIntegrityKnowledgeBase:
         
         return impact_mapping.get(event.event_type, (None, None))
     
-    def run_verification(self, event_id: str, user_id: str, image_confidence: int, desc_confidence: int) -> Dict[str, Any]:
-        """Run MeTTa verification logic using proper queries"""
+    def run_verification(self, event_id: str, user_id: str, image_confidence: int, desc_confidence: int, content_analysis: Optional[Dict] = None) -> Dict[str, Any]:
+        """Run MeTTa verification logic using content analysis results"""
         logger.info(f" Running MeTTa verification for event {event_id}")
         print('running metta verification')
         try:
-            # Query for auto-verification
-            auto_verify_query = f"(auto-verify {event_id} {user_id} {image_confidence} {desc_confidence})"
-            auto_verify_result = self.run_metta_function(auto_verify_query)
-            print(f'autoverify res: {auto_verify_result}')
-            # Check if verification passed by looking for verified atom
-            
-            raw_value = auto_verify_result[0]
-            str_value = str(raw_value).strip().lower()
-            is_verified = str_value == "true"
+            # Use content analysis results if provided (from CUDOS AI)
+            if content_analysis:
+                print(f"🤖 Using CUDOS AI content analysis for verification")
+                factual_accuracy = content_analysis.get('factual_accuracy', 0.5)
+                integrity_score = content_analysis.get('integrity_score', 0.5)
+                confidence = content_analysis.get('confidence', 0.5)
+                recommendation = content_analysis.get('recommendation', 'questionable')
 
-            print(f"verified (raw): {raw_value} -> (str): '{str_value}' -> (bool): {is_verified}")
+                # Determine verification based on AI analysis
+                if recommendation == 'verified' and confidence > 0.7:
+                    is_verified = True
+                    method = 'ai_verified'
+                    print(f"✅ AI directly verified (confidence: {confidence})")
+                elif recommendation == 'debunked' and confidence > 0.6:
+                    is_verified = False
+                    method = 'ai_debunked'
+                    print(f"❌ AI directly debunked (confidence: {confidence})")
+                else:
+                    # Fallback to score-based logic
+                    combined_score = (factual_accuracy + integrity_score + confidence) / 3
+                    is_verified = combined_score > 0.7
+                    method = 'ai_score_based'
+                    print(f"Using AI score-based logic (combined: {combined_score:.2f})")
 
-            if is_verified:
-                atom = f"(verified {event_id})"
-                verified_result = self.add_atom(atom, "event")
+                # Get additional MeTTa reasoning even when using AI
+                print(f"🔍 Gathering MeTTa verification reasoning for event {event_id}")
+                metta_reasoning = self._get_verification_reasoning(event_id, user_id)
 
-            # If auto-verify didn't work, try high-trust verification
-            if not is_verified:
-                high_trust_query = f"(high-trust-verify {event_id} {user_id})"
-                high_trust_result = self.run_metta_function(high_trust_query)
-                # give the person the benefit of doubt if they are having high trust score
-                if high_trust_result and len(high_trust_result) > 0:
-                    high_trust_raw = high_trust_result[0]
-                    high_trust_str = str(high_trust_raw).strip().lower()
-                    is_verified = high_trust_str == "true" or "high-trust-verify" in high_trust_str
-                    print(f"high-trust verified (raw): {high_trust_raw} -> (str): '{high_trust_str}' -> (bool): {is_verified}")
-            
+                reasoning = [
+                    f"AI factual accuracy: {factual_accuracy:.2f}",
+                    f"AI integrity score: {integrity_score:.2f}",
+                    f"AI confidence: {confidence:.2f}",
+                    f"AI recommendation: {recommendation}",
+                    f"Combined verification score: {(factual_accuracy + integrity_score + confidence) / 3:.2f}"
+                ] + metta_reasoning  # Add MeTTa reasoning to AI reasoning
+
+                if is_verified:
+                    atom = f"(verified {event_id})"
+                    self.add_atom(atom, "verification")
+
+            else:
+                # Fallback to legacy logic if no content analysis provided
+                print(f"🔄 Using legacy MeTTa verification (no AI analysis provided)")
+                logger.warning("No content analysis provided, using legacy verification logic")
+
+                # Query for auto-verification (legacy approach)
+                auto_verify_query = f"(auto-verify {event_id} {user_id} {image_confidence} {desc_confidence})"
+                auto_verify_result = self.run_metta_function(auto_verify_query)
+                print(f'autoverify res: {auto_verify_result}')
+
+                # Check if verification passed by looking for verified atom
+                raw_value = auto_verify_result[0] if auto_verify_result else "false"
+                str_value = str(raw_value).strip().lower()
+                is_verified = str_value == "true"
+
+                print(f"verified (raw): {raw_value} -> (str): '{str_value}' -> (bool): {is_verified}")
+
+                if is_verified:
+                    atom = f"(verified {event_id})"
+                    verified_result = self.add_atom(atom, "verification")
+
+                # If auto-verify didn't work, try high-trust verification
+                if not is_verified:
+                    high_trust_query = f"(high-trust-verify {event_id} {user_id})"
+                    high_trust_result = self.run_metta_function(high_trust_query)
+                    # give the person the benefit of doubt if they are having high trust score
+                    if high_trust_result and len(high_trust_result) > 0:
+                        high_trust_raw = high_trust_result[0]
+                        high_trust_str = str(high_trust_raw).strip().lower()
+                        is_verified = high_trust_str == "true" or "high-trust-verify" in high_trust_str
+                        print(f"high-trust verified (raw): {high_trust_raw} -> (str): '{high_trust_str}' -> (bool): {is_verified}")
+
+                method = 'auto-verify' if auto_verify_result else 'high-trust-verify' if is_verified else 'failed'
+                reasoning = self._get_verification_reasoning(event_id, user_id)
+
             # Ensure verified is always a boolean
             if not isinstance(is_verified, bool):
                 is_verified = bool(is_verified)
-            
-            # Get reasoning
-            reasoning = self._get_verification_reasoning(event_id, user_id)
-            
+
             verification_result = {
                 'verified': is_verified,
                 'event_id': event_id,
                 'user_id': user_id,
                 'reasoning': reasoning,
                 'verification_time': datetime.now().isoformat(),
-                'method': 'auto-verify' if auto_verify_result else 'high-trust-verify' if is_verified else 'failed'
+                'method': method,
+                'content_analysis_used': content_analysis is not None
             }
-            
+
             # Store verification history
             self.verification_history.append(verification_result)
-            
-            logger.info(f"✅ Verification complete: {'VERIFIED' if is_verified else 'FAILED'}")
+
+            logger.info(f"✅ Verification complete: {'VERIFIED' if is_verified else 'FAILED'} (method: {method})")
             return verification_result
-            
+
         except Exception as e:
             logger.error(f"❌ Verification error: {str(e)}")
             return {
@@ -333,11 +386,12 @@ class NewsIntegrityKnowledgeBase:
     
     def _get_verification_reasoning(self, event_id: str, user_id: str) -> List[str]:
         """Get reasoning for verification decision using proper queries"""
+        print(f"🔍 Getting MeTTa verification reasoning for event {event_id}")
         reasoning = []
-        
+
         # Check trust score
         trust_query = f"(trust-score {user_id} $score)"
-        trust_result = self.query_atoms(trust_query, "trust", "$score")
+        trust_result = self.query_atoms(trust_query, "identity", "$score")
         if trust_result:
             try:
                 # Extract score from the result
@@ -348,7 +402,7 @@ class NewsIntegrityKnowledgeBase:
                             score = score_raw.get_grounded_value()
                         else:
                             score = str(score_raw)
-                        
+
                         # Try to convert to number
                         try:
                             if isinstance(score, str) and score.isdigit():
@@ -357,9 +411,9 @@ class NewsIntegrityKnowledgeBase:
                                 score = float(score)
                         except (ValueError, TypeError):
                             pass
-                        
+
                         reasoning.append(f"User trust score: {score}")
-                        
+
                         # Check if score meets threshold
                         if isinstance(score, (int, float)):
                             if score >= 60:
@@ -374,23 +428,23 @@ class NewsIntegrityKnowledgeBase:
         else:
             reasoning.append("User trust score: unknown")
         evidence_query = f"(evidence-link {event_id} $link)"
-        evidence_result = self.query_atoms(evidence_query, "event", "$link")
+        evidence_result = self.query_atoms(evidence_query, "content", "$link")
         if evidence_result:
-            reasoning.append("✅ Photo evidence provided")
+            reasoning.append("Photo evidence provided")
         else:
-            reasoning.append("❌ No photo evidence found")
-        
+            reasoning.append("No photo evidence found")
+
         # Check GPS coordinates
         gps_query = f"(gps-coords {event_id} $coords)"
-        gps_result = self.query_atoms(gps_query, "event", "$coords")
+        gps_result = self.query_atoms(gps_query, "temporal", "$coords")
         if gps_result:
-            reasoning.append("✅ GPS coordinates available")
+            reasoning.append("GPS coordinates available")
         else:
-            reasoning.append("❌ No GPS coordinates found")
-        
+            reasoning.append("No GPS coordinates found")
+
         # Check timestamp
         timestamp_query = f"(timestamp {event_id} $time)"
-        timestamp_result = self.query_atoms(timestamp_query, "event", "$time")
+        timestamp_result = self.query_atoms(timestamp_query, "temporal", "$time")
         if timestamp_result:
             reasoning.append("✅ Event timestamp recorded")
         else:
@@ -442,11 +496,12 @@ class NewsIntegrityKnowledgeBase:
     
     def get_knowledge_base_state(self) -> Dict[str, Any]:
         """Get current state of the knowledge base"""
-        # Get counts of different atom types
-        user_atoms = self.get_all_atoms_of_type('user', 'trust')
-        event_atoms = self.get_all_atoms_of_type('event', 'event')
-        trust_atoms = self.get_all_atoms_of_type('trust-score', 'trust')
-        
+        # Get counts of different atom types from appropriate spaces
+        user_atoms = self.get_all_atoms_of_type('user', 'identity')
+        event_atoms = self.get_all_atoms_of_type('news', 'content')
+        trust_atoms = self.get_all_atoms_of_type('trust-score', 'identity')
+        verification_atoms = self.get_all_atoms_of_type('verified', 'verification')
+
         return {
             'base_knowledge_loaded': True,
             'verification_rules_loaded': True,
@@ -456,7 +511,8 @@ class NewsIntegrityKnowledgeBase:
             'atom_counts': {
                 'users': len(user_atoms),
                 'news_reports': len(event_atoms),
-                'trust_scores': len(trust_atoms)
+                'trust_scores': len(trust_atoms),
+                'verifications': len(verification_atoms)
             },
             'atom_spaces': list(self.atom_spaces.keys()),
             'knowledge_base_type': 'hyperon-based'
@@ -536,7 +592,9 @@ class NewsIntegrityKnowledgeBase:
             if space_name in self.atom_spaces:
                 space_ref = self.atom_spaces[space_name]
                 query = f"!(match {space_ref} {query_pattern} $result)"
+                print(f'🔍 Atom Space Query [{space_name}]: {query}')
                 result = self.metta.run(query)
+                print(f'📋 Atom Space Result [{space_name}]: {result}')
                 return self._parse_query_result(result)
             else:
                 logger.warning(f"Atom space {space_name} not found")
@@ -550,7 +608,7 @@ class NewsIntegrityKnowledgeBase:
         try:
             # Query MeTTa knowledge base for source-related atoms
             query = f'(news-source $news_id "{source}")'
-            results = self.query_atom_space("event", query)
+            results = self.query_atom_space("content", query)
 
             if results:
                 # Create a mock analysis response based on available data
@@ -704,17 +762,21 @@ class MeTTaService:
             return 'source'
         elif atom_content.startswith('(integrity-level '):
             return 'integrity'
+        elif atom_content.startswith('(wallet-address '):
+            return 'wallet'
+        elif atom_content.startswith('(timestamp ') or atom_content.startswith('(gps-coords '):
+            return 'temporal'
         else:
             return 'other'
     
-    async def run_verification(self, news_report: 'NewsReport', user: 'User', content_confidence: int, source_confidence: int) -> Dict[str, Any]:
+    async def run_verification(self, news_report: 'NewsReport', user: 'User', content_confidence: int, source_confidence: int, content_analysis: Optional[Dict] = None) -> Dict[str, Any]:
         """Run MeTTa verification logic on a news report object and user object (no DB queries)"""
         try:
             print("Creating news atoms...")
             news_atoms, metta_news_id = self.knowledge_base.create_news_atoms(news_report, user)
             print("Running verification from the knowledge base")
-            # Run verification using the MeTTa news ID
-            verification_result = self.knowledge_base.run_verification(metta_news_id, user.id, content_confidence, source_confidence)
+            # Run verification using the MeTTa news ID and pass content analysis
+            verification_result = self.knowledge_base.run_verification(metta_news_id, user.id, content_confidence, source_confidence, content_analysis)
             print(f"run_ver (verification_result): {verification_result}")
             return verification_result
         except Exception as e:
@@ -741,7 +803,7 @@ class MeTTaService:
         else:
             trust_update = f"(decrease-trust {user_id} {abs(delta)})"
         
-        self.knowledge_base.add_atom(trust_update, "trust")
+        self.knowledge_base.add_atom(trust_update, "identity")
         return delta
 
     def get_knowledge_base_state(self) -> Dict[str, Any]:
@@ -777,14 +839,14 @@ class MeTTaService:
         """Query specific atom space with pattern"""
         return self.knowledge_base.query_atom_space(space_name, query_pattern)
 
-    async def submit_news_report(self, report: 'NewsReportCreate') -> Dict:
+    async def submit_news_report(self, report: 'NewsReportCreate', content_analysis: Optional[Dict] = None) -> Dict:
         """Submit a news report to MeTTa for integrity analysis"""
         try:
             # Convert NewsReportCreate to a mock NewsReport for metta operations
             class MockNewsReport:
                 def __init__(self, report_data):
                     self.id = "temp_" + str(hash(str(report_data)))
-                    self.category = report_data.get('category', 'general')
+                    self.category = report_data.get('category', 'technology')
                     self.timestamp = report_data.get('timestamp')
                     self.latitude = report_data.get('latitude')
                     self.longitude = report_data.get('longitude')
@@ -806,9 +868,32 @@ class MeTTaService:
             # Create atoms using the service (remove await since create_atoms is async but we're in async context)
             atoms = await self.create_atoms(mock_report, mock_user)
 
-            # Run verification using the service
+            # Adjust confidence scores based on content analysis results
+            content_confidence = 70  # Default
+            source_confidence = 60   # Default
+
+            if content_analysis:
+                # Use content analysis results to adjust confidence
+                factual_accuracy = content_analysis.get('factual_accuracy', 0.5)
+                integrity_score = content_analysis.get('integrity_score', 0.5)
+                recommendation = content_analysis.get('recommendation', 'questionable')
+
+                # Adjust content confidence based on factual accuracy and integrity
+                if recommendation == 'verified':
+                    content_confidence = min(95, 70 + (factual_accuracy * 30))
+                elif recommendation == 'questionable':
+                    content_confidence = max(30, 70 - (0.7 - factual_accuracy) * 40)
+                elif recommendation == 'debunked':
+                    content_confidence = max(10, 70 - (factual_accuracy * 60))
+
+                # Adjust source confidence based on integrity score
+                source_confidence = max(10, min(90, integrity_score * 100))
+
+                logger.info(f"Content analysis adjusted confidence - Content: {content_confidence}, Source: {source_confidence}, Recommendation: {recommendation}")
+
+            # Run verification using the service with content analysis
             verification_result = await self.run_verification(
-                mock_report, mock_user, 70, 60  # Default confidence scores
+                mock_report, mock_user, int(content_confidence), int(source_confidence), content_analysis
             )
 
             return {
@@ -816,7 +901,8 @@ class MeTTaService:
                 'atoms_created': len(atoms),
                 'verified': verification_result.get('verified', False),
                 'report_id': mock_report.id,
-                'reasoning': verification_result.get('reasoning', [])
+                'reasoning': verification_result.get('reasoning', []),
+                'content_analysis': content_analysis
             }
 
         except Exception as e:
@@ -831,11 +917,11 @@ class MeTTaService:
 
             # Query for integrity patterns
             integrity_query = "(integrity-level $news $level)"
-            integrity_results = self.query_atom_space("event", integrity_query)
+            integrity_results = self.query_atom_space("verification", integrity_query)
 
             # Query for source patterns
             source_query = "(news-source $news $source)"
-            source_results = self.query_atom_space("event", source_query)
+            source_results = self.query_atom_space("content", source_query)
 
             return {
                 'patterns': {
@@ -855,7 +941,7 @@ class MeTTaService:
         try:
             # Query knowledge base for similar content
             content_query = f'(content $news "{content[:50]}...")'
-            content_matches = self.query_atom_space("event", content_query)
+            content_matches = self.query_atom_space("content", content_query)
 
             analysis_result = {
                 'integrity_score': 0.7,  # Default score
@@ -886,7 +972,7 @@ class MeTTaService:
 
                 # Query for similar content
                 similar_query = f'(content $news "{content[:30]}...")'
-                similar_reports = self.query_atom_space("event", similar_query)
+                similar_reports = self.query_atom_space("content", similar_query)
 
                 if len(similar_reports) > 1:
                     patterns.append({
@@ -898,7 +984,7 @@ class MeTTaService:
 
                 # Check source reliability
                 source_query = f'(news-source $news "{source}")'
-                source_reports = self.query_atom_space("event", source_query)
+                source_reports = self.query_atom_space("content", source_query)
 
                 if len(source_reports) > 5:  # High volume from same source
                     patterns.append({

@@ -1,6 +1,6 @@
 """
 Economic Impact API Routes
-Handles economic impact analysis and prediction endpoints for the Climate Witness DAO
+Handles economic impact analysis and prediction endpoints for the News Integrity DAO
 """
 
 from fastapi import APIRouter, Depends, HTTPException

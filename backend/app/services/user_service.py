@@ -1,5 +1,5 @@
 """
-User Service for Climate Witness Chain
+User Service for News Integrity
 Handles user management, trust scores, wallet integration, and MeTTa user representation
 """
 

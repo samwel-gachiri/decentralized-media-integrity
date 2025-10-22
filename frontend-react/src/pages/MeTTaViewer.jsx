@@ -191,7 +191,7 @@ const MeTTaViewer = () => {
                 query: query.trim(),
                 include_visualization: true
             }, {
-                timeout: 30000
+                timeout: 300000 // Increased to 5 minutes for AI processing
             });
 
             if (response.success) {

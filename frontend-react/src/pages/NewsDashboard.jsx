@@ -87,7 +87,7 @@ const NewsDashboard = () => {
       health: '🏥',
       environment: '🌱',
       social: '👥',
-      international: '🌍',
+      international: '📰',
       local: '🏠'
     };
     return emojis[category] || '📰';

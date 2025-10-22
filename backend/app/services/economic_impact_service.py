@@ -1,5 +1,5 @@
 """
-Economic Impact Service for Climate Witness DAO
+Economic Impact Service for News Integrity DAO
 Handles economic impact analysis, correlation, and prediction using MeTTa logic
 """
 

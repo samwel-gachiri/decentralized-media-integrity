@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import SignUpForm from '../components/auth/SignUpForm';
 import { useAuth } from '../hooks/useAuth';
@@ -11,13 +12,14 @@ const SignUp = () => {
     // Redirect if already authenticated
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/dashboard', { replace: true });
+            navigate('/news-dashboard', { replace: true });
         }
     }, [isAuthenticated, navigate]);
 
+    // eslint-disable-next-line no-unused-vars
     const handleSignUpSuccess = (user) => {
         // Navigate to dashboard after successful signup
-        navigate('/dashboard', { replace: true });
+        navigate('/news-dashboard', { replace: true });
     };
 
     const handleSignUpError = (error) => {
@@ -41,7 +43,7 @@ const SignUp = () => {
                         transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                         className="mx-auto h-16 w-16 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-full flex items-center justify-center mb-6"
                     >
-                        <span className="text-2xl">🌍</span>
+                        <span className="text-2xl">📰</span>
                     </motion.div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
                         Join News Integrity Network

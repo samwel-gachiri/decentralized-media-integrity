@@ -1,5 +1,5 @@
 """
-Enhanced Alert Service for Climate Witness DAO
+Enhanced Alert Service for News Integrity DAO
 Provides real-time early warnings and notifications for climate events
 """
 

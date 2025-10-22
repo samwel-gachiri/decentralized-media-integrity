@@ -1,4 +1,4 @@
-// Theme configuration for Climate Witness Chain
+// Theme configuration for News Integrity
 export const theme = {
     // Color palette
     colors: {

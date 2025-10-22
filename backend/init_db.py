@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database initialization script for Climate Witness Chain
+Database initialization script for News Integrity
 """
 
 import asyncio

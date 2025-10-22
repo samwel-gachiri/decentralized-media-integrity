@@ -66,7 +66,7 @@ const ResearcherDashboard = ({
 
     // Event types
     const eventTypes = [
-        { value: 'all', label: 'All Types', icon: '🌍' },
+        { value: 'all', label: 'All Types', icon: '📰' },
         { value: 'drought', label: 'Drought', icon: '🌵' },
         { value: 'flood', label: 'Flood', icon: '🌊' },
         { value: 'locust', label: 'Locust', icon: '🦗' },

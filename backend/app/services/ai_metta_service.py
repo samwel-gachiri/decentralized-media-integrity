@@ -88,17 +88,17 @@ Rules:
 6. Return only the MeTTa function definition, no explanations in the function itself
 
 The atom spaces we have are:
-&event-space, &trust-space, &economic-space, &governance-space, &prediction-space
+&identity, &content, &verification, &economic, &temporal
 
 Examples:
 Query: "Add two numbers"
 Function: (= (add $a $b) (+ $a $b))
 
 Query: "Sum credibility scores of all verified articles"
-Function without parameters: (= (sum-verified-credibility) (let* ((scores (match &event-space (news-article $source $title $credibility $integrity $verified) $credibility)) (verified-scores (filter (lambda (score) (= score true)) scores)) (total (foldl-atom + 0 verified-scores))) total))
+Function without parameters: (= (sum-verified-credibility) (let* ((scores (match &content (news-article $source $title $credibility $integrity $verified) $credibility)) (verified-scores (filter (lambda (score) (= score true)) scores)) (total (foldl-atom + 0 verified-scores))) total))
 
 Query: "Find all high-integrity news articles"
-Function with parameters: (= (find-high-integrity-articles $min-score) (match &event-space (news-article $source $title $credibility $integrity $verified) (filter (lambda (article) (> (car-atom (cdr-atom (cdr-atom article))) $min-score)) article)))
+Function with parameters: (= (find-high-integrity-articles $min-score) (match &content (news-article $source $title $credibility $integrity $verified) (filter (lambda (article) (> (car-atom (cdr-atom (cdr-atom article))) $min-score)) article)))
 
 Generate a MeTTa function definition for the following query with good naming:
 """
@@ -138,7 +138,7 @@ Generate a MeTTa function definition for the following query with good naming:
             return {
                 "success": False,
                 "error": str(e),
-                "fallback_function": "(match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title))",
+                "fallback_function": "(match &content (news-article $source $title $credibility $integrity $verified) ($source $title))",
                 "explanation": "Generated a basic fallback query due to processing error"
             }
     
@@ -253,7 +253,7 @@ Generate a MeTTa function definition for the following query with good naming:
             return max(matches, key=len)
         # Fallback: create a function definition from the query
         fname = self._function_name_from_query(user_query)
-        return f"(= ({fname}) (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title)))"
+        return f"(= ({fname}) (match &content (news-article $source $title $credibility $integrity $verified) ($source $title)))"
 
     def _function_name_from_query(self, query: str) -> str:
         # Use all words, remove common stopwords, join with dashes, limit length
@@ -338,13 +338,13 @@ Generate a MeTTa function definition for the following query with good naming:
     async def _generate_aggregation_function(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Generate aggregation-based MeTTa function definition for news integrity."""
         if "credibility" in query.lower() or "trust" in query.lower():
-            function = "(= (average-credibility-score) (let* ((scores (match &event-space (news-article $source $title $credibility $integrity $verified) $credibility)) (total (foldl-atom + 0 scores)) (count (length scores))) (/ total count)))"
+            function = "(= (average-credibility-score) (let* ((scores (match &content (news-article $source $title $credibility $integrity $verified) $credibility)) (total (foldl-atom + 0 scores)) (count (length scores))) (/ total count)))"
             explanation = "This function calculates the average credibility score of all news articles."
         elif "integrity" in query.lower():
-            function = "(= (sum-integrity-scores) (let* ((scores (match &event-space (news-article $source $title $credibility $integrity $verified) $integrity)) (total (foldl-atom + 0 scores))) total))"
+            function = "(= (sum-integrity-scores) (let* ((scores (match &content (news-article $source $title $credibility $integrity $verified) $integrity)) (total (foldl-atom + 0 scores))) total))"
             explanation = "This function sums the integrity scores of all news articles."
         else:
-            function = "(= (count-total-articles) (let* ((articles (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title))) (count (length articles))) count))"
+            function = "(= (count-total-articles) (let* ((articles (match &content (news-article $source $title $credibility $integrity $verified) ($source $title))) (count (length articles))) count))"
             explanation = "This function counts the total number of news articles in the database."
         return {
             "function": function,
@@ -357,13 +357,13 @@ Generate a MeTTa function definition for the following query with good naming:
     async def _generate_filtering_function(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Generate filtering-based MeTTa function definition for news integrity."""
         if "high" in query.lower() and ("integrity" in query.lower() or "credibility" in query.lower()):
-            function = "(= (high-integrity-articles) (let* ((articles (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title $credibility $integrity))) (high-integrity (filter (lambda (article) (> (car-atom (cdr-atom (cdr-atom (cdr-atom article)))) 0.8)) articles))) high-integrity))"
+            function = "(= (high-integrity-articles) (let* ((articles (match &content (news-article $source $title $credibility $integrity $verified) ($source $title $credibility $integrity))) (high-integrity (filter (lambda (article) (> (car-atom (cdr-atom (cdr-atom (cdr-atom article)))) 0.8)) articles))) high-integrity))"
             explanation = "This function returns all news articles with high integrity scores (>0.8)."
         elif "verified" in query.lower() or "true" in query.lower():
-            function = "(= (verified-articles) (match &event-space (news-article $source $title $credibility $integrity true) ($source $title $credibility)))"
+            function = "(= (verified-articles) (match &content (news-article $source $title $credibility $integrity true) ($source $title $credibility)))"
             explanation = "This function retrieves all verified news articles with their credibility scores."
         else:
-            function = "(= (all-articles) (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title)))"
+            function = "(= (all-articles) (match &content (news-article $source $title $credibility $integrity $verified) ($source $title)))"
             explanation = "This function retrieves all news articles with their basic information."
         return {
             "function": function,
@@ -376,10 +376,10 @@ Generate a MeTTa function definition for the following query with good naming:
     async def _generate_integrity_function(self, query: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Generate integrity verification MeTTa function definition."""
         if "low" in query.lower() or "suspect" in query.lower():
-            function = "(= (low-integrity-articles) (let* ((articles (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title $integrity))) (low-integrity (filter (lambda (article) (< (car-atom (cdr-atom (cdr-atom article))) 0.3)) articles))) low-integrity))"
+            function = "(= (low-integrity-articles) (let* ((articles (match &content (news-article $source $title $credibility $integrity $verified) ($source $title $integrity))) (low-integrity (filter (lambda (article) (< (car-atom (cdr-atom (cdr-atom article))) 0.3)) articles))) low-integrity))"
             explanation = "This function identifies news articles with low integrity scores (<0.3) that may need verification."
         else:
-            function = "(= (calculate-integrity-score) (let* ((article (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $credibility $verified))) (integrity-score (if $verified (* $credibility 1.2) (* $credibility 0.8)))) integrity-score))"
+            function = "(= (calculate-integrity-score) (let* ((article (match &content (news-article $source $title $credibility $integrity $verified) ($source $credibility $verified))) (integrity-score (if $verified (* $credibility 1.2) (* $credibility 0.8)))) integrity-score))"
             explanation = "This function calculates adjusted integrity scores based on verification status."
         return {
             "function": function,
@@ -394,10 +394,10 @@ Generate a MeTTa function definition for the following query with good naming:
         sources = self._extract_news_sources(query)
         if sources:
             source = sources[0]
-            function = f"(= (find-{source}-articles) (match &event-space (news-article {source} $title $credibility $integrity $verified) ($title $credibility)))"
+            function = f"(= (find-{source}-articles) (match &content (news-article {source} $title $credibility $integrity $verified) ($title $credibility)))"
             explanation = f"This function finds all articles from {source.upper()} and returns their titles and credibility scores."
         else:
-            function = "(= (find-all-articles) (match &event-space (news-article $source $title $credibility $integrity $verified) ($source $title)))"
+            function = "(= (find-all-articles) (match &content (news-article $source $title $credibility $integrity $verified) ($source $title)))"
             explanation = "This function finds all news articles and returns their sources and titles."
         return {
             "function": function,

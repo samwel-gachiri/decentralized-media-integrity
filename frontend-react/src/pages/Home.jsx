@@ -65,10 +65,10 @@ const Home = () => {
         },
         {
             icon: Lock,
-            title: 'Decentralized Storage',
-            description: 'Verified news stored immutably on CUDOS blockchain network',
+            title: 'AI-Powered Verification',
+            description: 'Advanced content analysis using CUDOS ASI Cloud for deep integrity assessment',
             color: 'from-amber-500 to-amber-600',
-            emoji: '�',
+            emoji: '🔒',
             gradient: 'bg-gradient-to-r from-amber-500 to-amber-600'
         }
     ];
@@ -173,7 +173,7 @@ const Home = () => {
                                 className="text-xl text-gray-600 mb-8 leading-relaxed"
                             >
                                 Community-driven news verification using MeTTa knowledge atoms
-                                with AI-powered deepfake detection and CUDOS blockchain storage.
+                                with AI-powered deepfake detection and CUDOS ASI Cloud analysis.
                             </motion.p>
 
                             <motion.div
@@ -193,7 +193,7 @@ const Home = () => {
                                             </span>
                                         </Link>
                                         <Link
-                                            to="/dashboard"
+                                            to="/news-dashboard"
                                             className="group relative inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 font-semibold rounded-xl border-2 border-blue-600 overflow-hidden transform hover:scale-105 transition-all duration-300"
                                         >
                                             <div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>

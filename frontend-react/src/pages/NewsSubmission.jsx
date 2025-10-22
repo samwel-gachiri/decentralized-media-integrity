@@ -10,7 +10,7 @@ const NewsSubmission = () => {
   const fileInputRef = useRef(null);    const [formData, setFormData] = useState({
         title: '',
         content: '',
-        category: 'general',
+        category: 'technology',
         mediaType: 'article',
         url: '',
         tags: '',
@@ -149,6 +149,7 @@ const NewsSubmission = () => {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
+                timeout: 300000, // 5 minutes timeout for AI processing
             });
 
             setSubmitStatus({
@@ -163,7 +164,7 @@ const NewsSubmission = () => {
             setFormData({
                 title: '',
                 content: '',
-                category: 'general',
+                category: 'technology',
                 mediaType: 'article',
                 url: '',
                 tags: '',
@@ -486,26 +487,26 @@ const NewsSubmission = () => {
                                 <div>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Verification Status</h3>
                                     <div className={`rounded-lg p-4 ${
-                                        submittedReport.verification_status === 'verified' ? 'bg-green-50 border border-green-200' :
-                                        submittedReport.verification_status === 'pending' ? 'bg-yellow-50 border border-yellow-200' :
+                                        submittedReport.integrity_level === 'verified' ? 'bg-green-50 border border-green-200' :
+                                        submittedReport.integrity_level === 'pending' ? 'bg-yellow-50 border border-yellow-200' :
                                         'bg-red-50 border border-red-200'
                                     }`}>
                                         <div className="flex items-center">
-                                            {submittedReport.verification_status === 'verified' ? (
+                                            {submittedReport.integrity_level === 'verified' ? (
                                                 <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
-                                            ) : submittedReport.verification_status === 'pending' ? (
+                                            ) : submittedReport.integrity_level === 'pending' ? (
                                                 <Clock className="w-6 h-6 text-yellow-600 mr-2" />
                                             ) : (
                                                 <AlertCircle className="w-6 h-6 text-red-600 mr-2" />
                                             )}
                                             <span className="font-medium capitalize">
-                                                {submittedReport.verification_status}
+                                                {submittedReport.integrity_level}
                                             </span>
                                         </div>
                                         <p className="text-sm text-gray-700 mt-2">
-                                            {submittedReport.verification_status === 'verified'
+                                            {submittedReport.integrity_level === 'verified'
                                                 ? 'This report has been verified by the community and AI analysis.'
-                                                : submittedReport.verification_status === 'pending'
+                                                : submittedReport.integrity_level === 'pending'
                                                 ? 'This report is being reviewed by the community and AI systems.'
                                                 : 'This report requires additional verification or has been flagged for review.'
                                             }
