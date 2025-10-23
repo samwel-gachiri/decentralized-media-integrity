@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // Fallback data for when API calls fail
 const FALLBACK_DATA = {
@@ -57,12 +57,35 @@ const FALLBACK_DATA = {
     }
   ],
 
-  userStats: {
-    trustScore: 50,
-    totalReports: 0,
-    verifiedReports: 0,
-    locationRegion: 'Unknown'
-  }
+  mettaAtoms: [
+    {
+      id: 'fallback-atom-1',
+      type: 'user',
+      content: '(user fallback-user)',
+      verified: false
+    },
+    {
+      id: 'fallback-atom-2',
+      type: 'news',
+      content: '(news fallback-news)',
+      verified: false
+    }
+  ],
+
+  mettaExamples: [
+    'Show me all verified news sources',
+    'Find articles about technology',
+    'Analyze misinformation patterns',
+    'List high-trust users'
+  ],
+
+  mettaQueryResult: {
+    success: false,
+    summary: 'Using cached MeTTa execution result - unable to connect to server',
+    generated_function: '(= (sample-query) (match &content (news $source $title) ($source $title)))',
+    execution_result: [],
+    execution_time: '0s'
+  },
 };
 
 // Cache key for localStorage
@@ -80,14 +103,7 @@ export const useFallbackData = (dataType, options = {}) => {
     transformData = (data) => data
   } = options;
 
-  // Load cached data on mount
-  useEffect(() => {
-    if (enableCache) {
-      loadFromCache();
-    }
-  }, [dataType]);
-
-  const loadFromCache = () => {
+  const loadFromCache = useCallback(() => {
     try {
       const cached = localStorage.getItem(`${CACHE_KEY}_${dataType}`);
       if (cached) {
@@ -104,7 +120,14 @@ export const useFallbackData = (dataType, options = {}) => {
       console.warn('Failed to load cached data:', err);
     }
     return false;
-  };
+  }, [dataType, cacheExpiry, transformData]);
+
+  // Load cached data on mount
+  useEffect(() => {
+    if (enableCache) {
+      loadFromCache();
+    }
+  }, [enableCache, loadFromCache]);
 
   const saveToCache = (data) => {
     if (!enableCache) return;
@@ -184,8 +207,7 @@ export const useFallbackData = (dataType, options = {}) => {
 export const withFallback = async (apiCall, dataType, options = {}) => {
   const {
     maxRetries = 2,
-    retryDelay = 1000,
-    useCache = true
+    retryDelay = 1000
   } = options;
 
   let lastError;
@@ -231,4 +253,18 @@ export const useOnlineStatus = () => {
   }, []);
 
   return isOnline;
+};
+
+// General fallback hook that provides the interface components expect
+export const useFallback = () => {
+  const isOnline = useOnlineStatus();
+
+  const getFallbackData = (dataType) => {
+    return FALLBACK_DATA[dataType] || null;
+  };
+
+  return {
+    getFallbackData,
+    isOnline
+  };
 };

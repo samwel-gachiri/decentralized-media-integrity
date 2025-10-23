@@ -207,34 +207,34 @@ async def get_metta_examples():
         "examples": {
             "basic_queries": [
                 {
-                    "query": "Show me all drought events",
-                    "function": "(match &space (climate-event drought $location $severity $impact $verified) ($location $severity))",
-                    "description": "Basic pattern matching to find drought events"
+                    "query": "Show me all verified news articles",
+                    "function": "(match &content (news-article $source $title $credibility $integrity true) ($source $title $credibility))",
+                    "description": "Basic pattern matching to find verified news articles"
                 },
                 {
-                    "query": "What is the total impact of all climate events?",
-                    "function": "(let* ((events (match &space (climate-event $type $location $severity $impact $verified) $impact)) (total (foldl-atom + 0 events))) total)",
-                    "description": "Aggregation using foldl-atom to sum impact values"
+                    "query": "What is the average credibility score of all articles?",
+                    "function": "(let* ((scores (match &content (news-article $source $title $credibility $integrity $verified) $credibility)) (total (foldl-atom + 0 scores)) (count (length scores))) (/ total count))",
+                    "description": "Aggregation using foldl-atom to calculate average credibility"
                 }
             ],
             "advanced_queries": [
                 {
-                    "query": "Compare drought severity between different regions",
-                    "function": "(let* ((droughts (match &space (climate-event drought $location $severity $impact $verified) ($location $severity))) (grouped (group-by-location droughts))) grouped)",
-                    "description": "Complex analysis with grouping and comparison"
+                    "query": "Find high-integrity articles from reputable sources",
+                    "function": "(let* ((articles (match &content (news-article $source $title $credibility $integrity $verified) ($source $title $credibility $integrity))) (high-integrity (filter (lambda (article) (> (car-atom (cdr-atom (cdr-atom (cdr-atom article)))) 0.8)) articles))) high-integrity)",
+                    "description": "Complex filtering to find articles with high integrity scores"
                 }
             ]
         },
         "available_functions": ai_metta_service.metta_functions,
         "sample_queries": [
-            "Show me all drought events in East Africa",
-            "What is the total impact of flood events?",
-            "Compare drought severity between Kenya and Ethiopia",
-            "Find high-severity climate events that are verified",
-            "Analyze climate patterns recursively by region",
-            "Which locations have the most climate events?",
-            "Show me the average severity of all events",
-            "Find unverified events with high impact"
+            "Show me all verified news articles",
+            "What is the average credibility score?",
+            "Find articles from CNN with high integrity",
+            "Compare credibility scores between different sources",
+            "Show me articles with low integrity scores",
+            "Which sources have the most articles?",
+            "Find unverified articles that need review",
+            "Calculate integrity scores for all articles"
         ]
     }
 
@@ -280,11 +280,11 @@ async def get_metta_stats(
             "total_atoms": db_stats.get("total_events", 0) * 3,  # Each event creates ~3 atoms
             "active_queries": 12,  # Mock active queries
             "knowledge_domains": [
-                "climate-events",
+                "news-articles",
                 "user-trust",
                 "verification-rules",
-                "economic-impact",
-                "governance-logic"
+                "source-credibility",
+                "content-integrity"
             ],
             "last_update": "2024-01-20T10:30:00Z",
             "query_performance": {
@@ -323,7 +323,7 @@ async def health_check():
     # Test MeTTa runtime availability
     try:
         test_result = await ai_metta_service.execute_metta_function(
-            "(match &space (test) (test))", 
+            "(match &content (news-article $source $title $credibility $integrity $verified) ($source $title))", 
             {}
         )
         health_status["metta_runtime"] = "available" if test_result["success"] else "simulation_mode"

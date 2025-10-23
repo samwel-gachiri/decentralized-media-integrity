@@ -33,7 +33,7 @@ class NewsIntegrityKnowledgeBase:
         self.load_base_knowledge()
     
     def _initialize_atom_spaces(self):
-        """Initialize multiple atom spaces for different domains in news integrity system"""
+        """Initialize multiple atom spaces in news integrity system"""
         try:
             # Create specialized atom spaces for news integrity domains
             # Identity/Trust Space: Users, trust scores, reputation, verification history
@@ -287,18 +287,18 @@ class NewsIntegrityKnowledgeBase:
                 recommendation = content_analysis.get('recommendation', 'questionable')
 
                 # Determine verification based on AI analysis
-                if recommendation == 'verified' and confidence > 0.7:
+                if recommendation == 'verified':
                     is_verified = True
                     method = 'ai_verified'
-                    print(f"✅ AI directly verified (confidence: {confidence})")
-                elif recommendation == 'debunked' and confidence > 0.6:
+                    print(f"✅ AI verified (recommendation: {recommendation})")
+                elif recommendation == 'debunked':
                     is_verified = False
                     method = 'ai_debunked'
-                    print(f"❌ AI directly debunked (confidence: {confidence})")
+                    print(f"❌ AI debunked (recommendation: {recommendation})")
                 else:
-                    # Fallback to score-based logic
+                    # Fallback to score-based logic for questionable content
                     combined_score = (factual_accuracy + integrity_score + confidence) / 3
-                    is_verified = combined_score > 0.7
+                    is_verified = combined_score > 0.6  # More lenient threshold
                     method = 'ai_score_based'
                     print(f"Using AI score-based logic (combined: {combined_score:.2f})")
 
@@ -311,7 +311,8 @@ class NewsIntegrityKnowledgeBase:
                     f"AI integrity score: {integrity_score:.2f}",
                     f"AI confidence: {confidence:.2f}",
                     f"AI recommendation: {recommendation}",
-                    f"Combined verification score: {(factual_accuracy + integrity_score + confidence) / 3:.2f}"
+                    f"Combined verification score: {(factual_accuracy + integrity_score + confidence) / 3:.2f}",
+                    f"Verification decision: {'VERIFIED' if is_verified else 'FAILED'} based on {method}"
                 ] + metta_reasoning  # Add MeTTa reasoning to AI reasoning
 
                 if is_verified:

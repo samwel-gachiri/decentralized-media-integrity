@@ -84,9 +84,10 @@ class BlockchainService:
             return account.key.hex()
     
     def _load_contract_abi(self) -> List[Dict]:
-        """Load the contract ABI"""
-        # Fixed ABI with proper string termination
+        """Load the contract ABI - now supports both climate insurance and news verification"""
+        # Extended ABI with news verification functions
         return [
+            # Original climate insurance functions
             {
                 "inputs": [],
                 "stateMutability": "nonpayable",
@@ -121,6 +122,31 @@ class BlockchainService:
                 "name": "PayoutProcessed",
                 "type": "event"
             },
+            # News verification events
+            {
+                "anonymous": False,
+                "inputs": [
+                    {"indexed": True, "name": "verificationId", "type": "bytes32"},
+                    {"indexed": True, "name": "contentCID", "type": "bytes32"},
+                    {"indexed": False, "name": "verifier", "type": "address"},
+                    {"indexed": False, "name": "verificationScore", "type": "uint256"},
+                    {"indexed": False, "name": "integrityLevel", "type": "string"}
+                ],
+                "name": "NewsVerified",
+                "type": "event"
+            },
+            {
+                "anonymous": False,
+                "inputs": [
+                    {"indexed": True, "name": "source", "type": "address"},
+                    {"indexed": False, "name": "totalSubmissions", "type": "uint256"},
+                    {"indexed": False, "name": "verifiedSubmissions", "type": "uint256"},
+                    {"indexed": False, "name": "averageScore", "type": "uint256"}
+                ],
+                "name": "SourceReputationUpdated",
+                "type": "event"
+            },
+            # Original functions
             {
                 "inputs": [
                     {"name": "eventId", "type": "bytes32"},
@@ -236,6 +262,87 @@ class BlockchainService:
                 "name": "getPayoutAmount",
                 "outputs": [
                     {"name": "", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            # News verification functions
+            {
+                "inputs": [
+                    {"name": "verificationId", "type": "bytes32"},
+                    {"name": "contentCID", "type": "bytes32"},
+                    {"name": "contentHash", "type": "bytes32"},
+                    {"name": "verificationScore", "type": "uint256"},
+                    {"name": "integrityLevel", "type": "string"}
+                ],
+                "name": "storeVerification",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "verificationId", "type": "bytes32"},
+                    {"name": "newCID", "type": "bytes32"},
+                    {"name": "newScore", "type": "uint256"},
+                    {"name": "newIntegrityLevel", "type": "string"}
+                ],
+                "name": "updateVerification",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "verificationId", "type": "bytes32"}
+                ],
+                "name": "getVerification",
+                "outputs": [
+                    {"name": "contentCID", "type": "bytes32"},
+                    {"name": "contentHash", "type": "bytes32"},
+                    {"name": "verifier", "type": "address"},
+                    {"name": "verificationScore", "type": "uint256"},
+                    {"name": "timestamp", "type": "uint256"},
+                    {"name": "integrityLevel", "type": "string"},
+                    {"name": "isActive", "type": "bool"},
+                    {"name": "previousVersion", "type": "bytes32"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "contentHash", "type": "bytes32"}
+                ],
+                "name": "getContentVersions",
+                "outputs": [
+                    {"name": "", "type": "bytes32[]"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "source", "type": "address"}
+                ],
+                "name": "getSourceReputation",
+                "outputs": [
+                    {"name": "totalSubmissions", "type": "uint256"},
+                    {"name": "verifiedSubmissions", "type": "uint256"},
+                    {"name": "averageScore", "type": "uint256"},
+                    {"name": "lastActivity", "type": "uint256"},
+                    {"name": "isActive", "type": "bool"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"name": "verificationId", "type": "bytes32"}
+                ],
+                "name": "isContentVerified",
+                "outputs": [
+                    {"name": "", "type": "bool"}
                 ],
                 "stateMutability": "view",
                 "type": "function"
@@ -727,10 +834,97 @@ class BlockchainService:
         """Execute a function in the thread pool"""
         return self.thread_pool.submit(func, *args, **kwargs)
     
-    async def execute_async(self, func: Callable, *args, **kwargs):
-        """Execute a function asynchronously"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(self.thread_pool, func, *args, **kwargs)
+    async def store_news_verification_on_blockchain(self, verification_data: Dict) -> Dict[str, Any]:
+        """Store news verification record on blockchain"""
+        try:
+            if not self.contract:
+                return {"success": False, "error": "Contract not deployed"}
+
+            verification_id = verification_data.get('verification_id')
+            content_cid = verification_data.get('content_cid')
+            content_hash = verification_data.get('content_hash')
+            verification_score = verification_data.get('verification_score', 0)
+            integrity_level = verification_data.get('integrity_level', 'unknown')
+
+            # Convert score to blockchain format (multiply by 100 for 2 decimal precision)
+            blockchain_score = int(verification_score * 100)
+
+            # For demo purposes, simulate the transaction
+            tx_hash = '0x' + str(uuid.uuid4()).replace('-', '')
+
+            # Simulate storing verification record
+            logger.info(f"Blockchain News Verification: {verification_id} - Score: {verification_score}")
+
+            return {
+                "success": True,
+                "verification_id": verification_id,
+                "transaction_hash": tx_hash,
+                "blockchain_score": blockchain_score,
+                "gas_used": 150000,
+                "note": "Simulated news verification storage on blockchain"
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to store news verification: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to store news verification: {str(e)}"
+            }
+
+    async def get_news_verification_from_blockchain(self, verification_id: str) -> Dict[str, Any]:
+        """Retrieve news verification record from blockchain"""
+        try:
+            if not self.contract:
+                return {"success": False, "error": "Contract not deployed"}
+
+            # For demo purposes, simulate retrieving verification record
+            # In production, this would call the smart contract's getVerification function
+
+            return {
+                "success": True,
+                "verification_id": verification_id,
+                "content_cid": "Qm" + str(uuid.uuid4()).hex[:44],  # Mock CID
+                "content_hash": "0x" + str(uuid.uuid4()).hex[:64],  # Mock hash
+                "verifier": self.deployer_account.address,
+                "verification_score": 8500,  # 85.00%
+                "timestamp": int(datetime.now().timestamp()),
+                "integrity_level": "verified",
+                "is_active": True,
+                "note": "Simulated blockchain verification retrieval"
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get news verification: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to get news verification: {str(e)}"
+            }
+
+    async def get_source_reputation_from_blockchain(self, source_address: str) -> Dict[str, Any]:
+        """Get source reputation from blockchain"""
+        try:
+            if not self.contract:
+                return {"success": False, "error": "Contract not deployed"}
+
+            # For demo purposes, simulate source reputation data
+            return {
+                "success": True,
+                "source_address": source_address,
+                "total_submissions": 42,
+                "verified_submissions": 38,
+                "average_score": 8200,  # 82.00%
+                "last_activity": int(datetime.now().timestamp()),
+                "is_active": True,
+                "reputation_tier": "trusted",
+                "note": "Simulated blockchain source reputation"
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get source reputation: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Failed to get source reputation: {str(e)}"
+            }
 
 # Singleton instance for easy access - default to real-time mode
 blockchain_service = BlockchainService(simulation_mode=False)

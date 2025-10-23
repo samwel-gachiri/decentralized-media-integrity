@@ -32,6 +32,12 @@ class AIMeTTaService:
         self.openai_client = None
         self.anthropic_client = None
 
+        # Available MeTTa functions for the service
+        self.metta_functions = [
+            'match', 'let', 'let*', 'foldl-atom', 'cdr-atom', 'car-atom', 
+            'filter', 'map', 'lambda', 'if', 'eval', 'add-atom', 'new-space'
+        ]
+
         # Try OpenAI first (for CUDA/CUDOS ASIC)
         openai_api_key = os.getenv("ASI_API_KEY")
         if openai_api_key:

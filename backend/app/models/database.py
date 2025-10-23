@@ -98,8 +98,12 @@ class DecentralizedStorage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     report_id = Column(Integer, nullable=False, index=True)
-    cudos_cid = Column(String(100), nullable=False)  # Content Identifier
+    cudos_cid = Column(String(100), nullable=False)  # IPFS Content Identifier
     storage_url = Column(String(500), nullable=False)
+    blockchain_tx_hash = Column(String(100), nullable=True)  # Blockchain transaction hash
+    verification_id = Column(String(100), nullable=True)  # Unique verification identifier
+    content_hash = Column(String(100), nullable=True)  # SHA256 hash of content
+    verification_score = Column(Float, nullable=True)  # Verification score at time of storage
     created_at = Column(DateTime, default=datetime.utcnow)
     verified = Column(Boolean, default=True)
 

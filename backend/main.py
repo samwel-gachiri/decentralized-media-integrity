@@ -60,7 +60,7 @@ app.add_middleware(
 )
 
 
-from app.api.routes import events, metta, users, auth, community_verification, economic_impact, dao_governance, alerts, ai_metta, news
+from app.api.routes import events, metta, users, auth, community_verification, economic_impact, dao_governance, alerts, ai_metta, news, decentralized_storage
 
 try:
     from app.api.routes import blockchain
@@ -93,6 +93,7 @@ app.include_router(community_verification.router, prefix="/api/community-verific
 app.include_router(economic_impact.router, prefix="/api/economic-impact", tags=["economic-impact"])
 app.include_router(dao_governance.router, prefix="/api/dao", tags=["dao-governance"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
+app.include_router(decentralized_storage.router, prefix="/api/decentralized", tags=["decentralized-storage"])
 app.include_router(news.router, prefix="/api/news", tags=["news"])
 
 
@@ -105,82 +106,6 @@ else:
 
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-@app.post("/api/news/reports", response_model=NewsReportResponse, tags=["news"])
-async def create_news_report(report: NewsReportCreate):
-    """Create a new news report"""
-    try:
-        return await news_service.create_news_report(report)
-    except Exception as e:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=f"Error creating news report: {str(e)}")
-
-@app.get("/api/news/reports/{source}", response_model=List[NewsReportResponse], tags=["news"])
-async def get_news_reports(source: str, limit: int = 10):
-    """Get recent news reports for a source"""
-    reports = await news_service.get_recent_reports(source, limit)
-    if not reports:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="No news reports found for this source")
-    return reports
-
-@app.get("/api/news/analysis/{source}", response_model=dict, tags=["news"])
-async def get_news_analysis(source: str):
-    """Get news analysis for a source"""
-    analysis = await news_service.get_source_analysis(source)
-    if not analysis:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="News analysis not available for this source")
-    return analysis
-
-@app.get("/api/news/alerts/{source}", response_model=List[IntegrityAlertResponse], tags=["news"])
-async def get_news_alerts(source: str):
-    """Get active news integrity alerts for a source"""
-    alerts = await news_service.get_news_alerts(source)
-    return alerts
-
-@app.get("/api/news/stats/{source}", response_model=ReportStatsResponse, tags=["news"])
-async def get_news_stats(source: str):
-    """Get statistics for news reports from a source"""
-    stats = await news_service.get_report_stats(source)
-    return stats
-
-@app.get("/api/news/sources", tags=["news"])
-async def get_news_sources():
-    """Get all sources with news reports"""
-    sources = await news_service.get_all_sources()
-    return {"sources": sources}
-
-@app.get("/api/news/stats", tags=["news"])
-async def get_global_news_stats():
-    """Get global news statistics"""
-    stats = await news_service.get_global_stats()
-    return stats
-
-@app.get("/api/news/reports/recent", response_model=List[NewsReportResponse], tags=["news"])
-async def get_recent_news_reports(limit: int = 10):
-    """Get recent news reports from all sources"""
-    reports = await news_service.get_recent_reports_all_sources(limit)
-    return reports
-
-@app.post("/api/news/reports/{report_id}/verify", tags=["news"])
-async def verify_news_report(report_id: int, verified: bool = True):
-    """Verify or unverify a news report"""
-    success = await news_service.verify_report(report_id, verified)
-    if not success:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="News report not found")
-    return {"status": "success", "verified": verified}
-
-@app.get("/api/news/health", tags=["news"])
-async def news_health_check():
-    """News service health check"""
-    from datetime import datetime
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow(),
-        "service": "news_integrity_service"
-    }
 
 @app.get("/")
 async def root():

@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
 from app.models.database import NewsReport, IntegrityAlert, PatternCache, get_session, get_db, IntegrityLevelEnum
 from app.models.newsmodels import NewsReportCreate, NewsReportResponse, IntegrityAlertResponse, ReportStatsResponse
+from app.services.media_analysis_service import MediaAnalysisService
 from app.services.metta_service import MeTTaService
+from app.services.decentralized_storage_service import decentralized_storage_service
 from typing import List, Optional, Dict, Any
 import json
 from datetime import datetime, timedelta, timezone
@@ -10,7 +12,6 @@ from sqlalchemy import func
 import duckduckgo_search
 import cv2
 import numpy as np
-from deepface import DeepFace
 import tensorflow as tf
 import asyncio
 import aiohttp
@@ -18,28 +19,21 @@ import os
 from dataclasses import dataclass
 import uuid
 
+# Import shared types
+from app.common.cudos_types import CUDOSInferenceRequest, CUDOSInferenceResponse
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@dataclass
-class CUDOSInferenceRequest:
-    """CUDOS ASI Cloud inference request"""
-    model: str
-    prompt: str
-    max_tokens: int = 1000
-    temperature: float = 0.7
-    top_p: float = 0.9
-    stream: bool = False
-
-@dataclass
-class CUDOSInferenceResponse:
-    """CUDOS ASI Cloud inference response"""
-    id: str
-    model: str
-    choices: List[Dict[str, Any]]
-    usage: Dict[str, int]
-    created: int
+# Check if DeepFace is available
+try:
+    from deepface import DeepFace
+    DEEPFACE_AVAILABLE = True
+    logger.info("✅ DeepFace library available for deepfake detection")
+except ImportError:
+    DEEPFACE_AVAILABLE = False
+    logger.warning("⚠️ DeepFace library not available - deepfake detection disabled")
 
 class CUDOSASIClient:
     """
@@ -134,20 +128,22 @@ class NewsService:
         self.ddg_search = duckduckgo_search.DDGS()
         # Initialize CUDOS ASI Cloud client for AI inference
         self.cudos_client = CUDOSASIClient()
+        # Initialize media analysis service for AI-powered media content analysis
+        self.media_analysis_service = MediaAnalysisService(self.cudos_client)
         self.preferred_models = {
-            'analysis': 'asi1-mini',
+            'analysis': 'openai/gpt-oss-20b',
             'verification': 'asi1-mini',
             'reasoning': 'asi1-mini'
         }
 
-    async def create_news_report(self, report_data: NewsReportCreate) -> NewsReportResponse:
+    async def create_news_report(self, report_data: NewsReportCreate, uploaded_file_data: Optional[bytes] = None) -> NewsReportResponse:
         """Create a new news report and trigger MeTTa analysis with integrity checks"""
         
         db = get_session()
         try:
             # Perform integrity checks
-            verification_score = await self._calculate_verification_score(report_data)
-            deepfake_prob = await self._check_deepfake_probability(report_data.media_url) if report_data.media_url else None
+            verification_score = await self._calculate_verification_score(report_data, uploaded_file_data)
+            deepfake_prob = await self._check_deepfake_probability(report_data.media_url, uploaded_file_data) if report_data.media_url else None
 
             # Get content analysis for integrity level determination
             content_analysis = await self._analyze_content_with_cudos(
@@ -158,6 +154,7 @@ class NewsService:
 
             # Determine integrity level
             integrity_level = self._determine_integrity_level(verification_score, deepfake_prob, content_analysis)
+            logger.info(f"Final integrity level: {integrity_level}, verification_score: {verification_score}")
 
             # Save to database
             db_report = NewsReport(
@@ -180,9 +177,14 @@ class NewsService:
             db.commit()
             db.refresh(db_report)
 
-            # Store verified content on CUDOS/IPFS if integrity is high
-            if integrity_level == "verified" and verification_score > 0.8:
-                await self._store_verified_content_on_cudos(db_report.id, report_data.dict())
+            # Store verified content on decentralized storage if integrity is high
+            # if integrity_level.value in ["verified", "pending"] and verification_score > 0.5:
+            logger.info(f"Attempting to store content on IPFS: integrity_level={integrity_level.value}, score={verification_score}")
+            try:
+                storage_result = await self._store_verified_content_on_cudos(db_report.id, report_data.dict())
+                logger.info(f"IPFS storage result: {storage_result}")
+            except Exception as e:
+                logger.error(f"IPFS storage failed: {str(e)}")
 
             # Perform URL verification if URL is provided
             url_verification = None
@@ -231,7 +233,7 @@ class NewsService:
         finally:
             db.close()
 
-    async def _calculate_verification_score(self, report_data: NewsReportCreate, url_verification: Optional[Dict] = None) -> float:
+    async def _calculate_verification_score(self, report_data: NewsReportCreate, uploaded_file_data: Optional[bytes] = None, url_verification: Optional[Dict] = None) -> float:
         """Calculate verification score using multiple sources including enhanced CUDOS AI"""
         score = 0.6  # Increased base score - give benefit of the doubt
 
@@ -260,15 +262,40 @@ class NewsService:
             report_data.url
         )
 
+        # AI-powered media content analysis if media is provided
+        media_analysis = None
+        if report_data.media_url:
+            media_analysis = await self._analyze_media_content_with_cudos(
+                report_data.media_url,
+                report_data.media_type.value if hasattr(report_data.media_type, 'value') else str(report_data.media_type),
+                {
+                    'title': report_data.title,
+                    'content': report_data.content,
+                    'source': report_data.source
+                },
+                uploaded_file_data
+            )
+
         # Use factual accuracy and integrity score from AI analysis
         factual_accuracy = content_analysis.get('factual_accuracy', 0.5)
         integrity_score = content_analysis.get('integrity_score', 0.5)
         confidence = content_analysis.get('confidence', 0.5)
         recommendation = content_analysis.get('recommendation', 'questionable')
 
-        # Weight the AI analysis heavily but reasonably
-        ai_score = (factual_accuracy + integrity_score + confidence) / 3
-        score += ai_score * 0.5  # Reduced AI weight to allow other factors
+        # Incorporate media analysis results if available
+        if media_analysis and 'overall_verification' in media_analysis:
+            media_verification = media_analysis['overall_verification']
+            media_score = media_verification.get('overall_verification_score', 0.5)
+
+            # Weight media analysis heavily for visual content verification
+            ai_score = (factual_accuracy + integrity_score + confidence + media_score) / 4
+            score += ai_score * 0.6  # Increased weight for comprehensive AI analysis
+
+            logger.info(f"Media-enhanced verification: content={factual_accuracy:.2f}, media={media_score:.2f}, combined={ai_score:.2f}")
+        else:
+            # Weight the AI analysis heavily but reasonably
+            ai_score = (factual_accuracy + integrity_score + confidence) / 3
+            score += ai_score * 0.5  # Reduced AI weight to allow other factors
 
         # Adjust score based on recommendation (less aggressive adjustments)
         if recommendation == 'verified':
@@ -282,22 +309,55 @@ class NewsService:
 
         return min(max(score, 0.0), 1.0)
 
-    async def _check_deepfake_probability(self, media_url: str) -> float:
+    async def _check_deepfake_probability(self, media_url: str, uploaded_file_data: Optional[bytes] = None) -> float:
         """Check if media content is likely deepfake using DeepFace"""
+        if not DEEPFACE_AVAILABLE:
+            logger.warning("⚠️ DeepFace not available, skipping deepfake detection")
+            return 0.0
+
         try:
-            # For images/videos, download and analyze
-            import requests
-            from io import BytesIO
-            from PIL import Image
-            
-            response = requests.get(media_url, timeout=10)
-            if response.status_code != 200:
-                return 0.0
-                
-            # Load image
-            img = Image.open(BytesIO(response.content))
-            img_array = np.array(img)
-            
+            # Handle different media sources
+            if uploaded_file_data and media_url.startswith('uploaded://'):
+                # Use uploaded file data directly
+                from PIL import Image
+                from io import BytesIO
+                img = Image.open(BytesIO(uploaded_file_data))
+                img_array = np.array(img)
+            elif media_url.startswith(('http://', 'https://')):
+                # External URL - download the content
+                import requests
+                from io import BytesIO
+                from PIL import Image
+
+                response = requests.get(media_url, timeout=10)
+                if response.status_code != 200:
+                    return 0.0
+
+                # Load image
+                img = Image.open(BytesIO(response.content))
+                img_array = np.array(img)
+            else:
+                # Local file path - read directly (fallback for compatibility)
+                from PIL import Image
+                import os
+
+                # Check if it's an absolute path to uploads directory
+                if os.path.isabs(media_url) and os.path.exists(media_url):
+                    file_path = media_url
+                elif media_url.startswith('/uploads/'):
+                    # Handle web-style paths (fallback for compatibility)
+                    file_path = os.path.join('uploads', os.path.basename(media_url))
+                else:
+                    file_path = media_url
+
+                if not os.path.exists(file_path):
+                    logger.warning(f"Local media file not found: {file_path}")
+                    return 0.0
+
+                # Load image directly from file
+                img = Image.open(file_path)
+                img_array = np.array(img)
+
             # Use DeepFace for face analysis (deepfake detection via face recognition confidence)
             try:
                 result = DeepFace.analyze(img_array, actions=['emotion'], enforce_detection=False)
@@ -310,9 +370,9 @@ class NewsService:
                     deepfake_prob = 0.5  # No face detected
             except Exception:
                 deepfake_prob = 0.0
-                
+
             return deepfake_prob
-            
+
         except Exception as e:
             logging.error(f"Deepfake detection failed: {str(e)}")
             return 0.0
@@ -405,6 +465,31 @@ class NewsService:
         except Exception as e:
             logger.error(f"CUDOS content analysis failed: {str(e)}")
             return {"integrity_score": 0.5, "error": str(e)}
+
+    async def _analyze_media_content_with_cudos(self, media_url: str, media_type: str, context: Dict[str, Any], uploaded_file_data: Optional[bytes] = None) -> Dict[str, Any]:
+        """Analyze media content using CUDOS AI-powered media analysis service"""
+        try:
+            # Use the media analysis service for comprehensive media verification
+            media_analysis = await self.media_analysis_service.analyze_media_content(
+                media_url=media_url,
+                media_type=media_type,
+                context=context,
+                uploaded_file_data=uploaded_file_data
+            )
+
+            logger.info(f"Media analysis completed for {media_type}: {media_analysis.get('overall_verification', {}).get('overall_verification_score', 'N/A')}")
+            return media_analysis
+
+        except Exception as e:
+            logger.error(f"Media content analysis failed: {str(e)}")
+            return {
+                "overall_verification": {
+                    "overall_verification_score": 0.5,
+                    "confidence": 0.3,
+                    "recommendation": "questionable"
+                },
+                "error": str(e)
+            }
 
     async def _verify_content_against_url(self, submitted_content: str, url: str) -> Dict[str, Any]:
         """Verify submitted content against the content at the provided URL using CUDOS ASI"""
@@ -499,47 +584,39 @@ class NewsService:
             return {"content_match_score": 0.0, "error": str(e)}
 
     async def _store_verified_content_on_cudos(self, report_id: int, content: Dict):
-        """Store verified news content using CUDOS ASI Cloud for additional analysis"""
+        """Store verified news content using decentralized storage (IPFS + blockchain)"""
         try:
-            # Use CUDOS for advanced content verification and insights
-            verification_prompt = f"""
-            Perform advanced verification analysis on this news content:
+            # Prepare verification metadata
+            verification_metadata = {
+                'integrity_level': content.get('integrity_level', 'verified'),
+                'verification_score': content.get('verification_score', 0.8),
+                'deepfake_probability': content.get('deepfake_probability'),
+                'ai_analysis': content.get('ai_analysis', {}),
+                'source_credibility': content.get('source_credibility', {}),
+                'cross_references': content.get('cross_references', [])
+            }
 
-            Report ID: {report_id}
-            Content: {json.dumps(content, indent=2)}
-
-            Provide:
-            1. Deep verification insights
-            2. Potential manipulation detection
-            3. Cross-reference recommendations
-            4. Trust score assessment
-            5. Recommendations for further investigation
-
-            Respond with detailed analysis.
-            """
-
-            request = CUDOSInferenceRequest(
-                model=self.preferred_models['verification'],
-                prompt=verification_prompt,
-                max_tokens=1500,
-                temperature=0.2  # Low temperature for verification
+            # Store on decentralized storage
+            storage_result = await decentralized_storage_service.store_verified_news(
+                {**content, 'id': report_id},
+                verification_metadata
             )
 
-            response = await self.cudos_client.create_inference(request)
-
-            if response.choices:
-                verification_text = response.choices[0].get('message', {}).get('content', '')
-                logger.info(f"Advanced verification completed for report {report_id}")
+            if storage_result['success']:
+                logger.info(f"✅ Verified news stored decentralized: CID={storage_result['ipfs_cid']}")
                 return {
                     "success": True,
-                    "verification": verification_text,
-                    "inference_id": response.id
+                    "ipfs_cid": storage_result['ipfs_cid'],
+                    "ipfs_url": storage_result['ipfs_url'],
+                    "blockchain_tx": storage_result.get('blockchain_tx'),
+                    "verification_id": storage_result.get('verification_id')
                 }
-
-            return {"success": False, "error": "No verification response"}
+            else:
+                logger.warning(f"⚠️ Decentralized storage failed: {storage_result.get('error')}")
+                return {"success": False, "error": storage_result.get('error')}
 
         except Exception as e:
-            logger.error(f"CUDOS verification failed: {str(e)}")
+            logger.error(f"Decentralized storage failed: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def _determine_integrity_level(self, verification_score: float, deepfake_prob: Optional[float], content_analysis: Optional[Dict] = None) -> IntegrityLevelEnum:

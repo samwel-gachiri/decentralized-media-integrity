@@ -1,16 +1,6 @@
 ; Decentralized News Integrity - Helper Functions
 ; This file contains utility functions and mathematical operations for news verification
 
-; Distance calculation helper (simplified Haversine formula approximation)
-   ; For small distances, this approximation is sufficient for news location verification
-(= (distance $lat1 $lng1 $lat2 $lng2)
-(and (- $lat2 $lat1 $dlat)
-(- $lng2 $lng1 $dlng)
-(* $dlat $dlat $dlat2)
-(* $dlng $dlng $dlng2)
-(+ $dlat2 $dlng2 $sum)
-(sqrt $sum $distance))
-$distance)
 
 (= (distance $lat1 $lng1 $lat2 $lng2)
 (let* (($dlat (- $lat2 $lat1))

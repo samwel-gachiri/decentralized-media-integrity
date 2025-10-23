@@ -1,4 +1,5 @@
 import React from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { Award, TrendingUp, Shield, Star, Target } from 'lucide-react';
 import Card from '../ui/Card';

@@ -38,7 +38,7 @@ const AppLayout = ({ children, showNavigation = true, showFooter = true }) => {
         { path: '/news-dashboard', label: 'Dashboard', icon: Home },
         { path: '/submit-news', label: 'Report news', icon: Camera },
         { path: '/news-map', label: 'Map', icon: Map },
-        // { path: '/metta', label: 'MeTTa', icon: Brain },
+        { path: '/metta', label: 'MeTTa', icon: Brain },
         { path: '/blockchain', label: 'Blockchain', icon: DollarSign },
         ...(user?.role === 'researcher' ? [
             { path: '/analytics', label: 'Analytics', icon: BarChart3 }

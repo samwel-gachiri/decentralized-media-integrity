@@ -76,18 +76,13 @@ async def create_news_report(
 
         # Handle media file upload if provided
         final_media_url = media_url
+        uploaded_file_data = None
         if media_file:
-            # Save uploaded file
-            file_extension = os.path.splitext(media_file.filename)[1]
-            unique_filename = f"{uuid.uuid4()}{file_extension}"
-            file_path = os.path.join("uploads", unique_filename)
-
-            os.makedirs("uploads", exist_ok=True)
-            with open(file_path, "wb") as buffer:
-                content = await media_file.read()
-                buffer.write(content)
-
-            final_media_url = f"/uploads/{unique_filename}"
+            # Read file data directly into memory for processing
+            uploaded_file_data = await media_file.read()
+            # Create a temporary identifier for the uploaded content
+            unique_filename = f"{uuid.uuid4()}{os.path.splitext(media_file.filename)[1]}"
+            final_media_url = f"uploaded://{unique_filename}"  # Special scheme to indicate uploaded content
 
         # Handle media type (support both snake_case and camelCase)
         final_media_type = media_type or mediaType
@@ -109,8 +104,8 @@ async def create_news_report(
             longitude=longitude
         )
 
-        # Create the report
-        result = await news_service.create_news_report(report_data)
+        # Create the report with uploaded file data
+        result = await news_service.create_news_report(report_data, uploaded_file_data)
         return result
 
     except Exception as e:

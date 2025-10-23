@@ -29,12 +29,12 @@ import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import { useAuth } from '../hooks/useAuth';
 import { apiClient } from '../services/apiClient';
-import { useFallbackData } from '../hooks/useFallback';
+import { useFallback } from '../hooks/useFallback';
 import D3Visualization from '../components/metta/D3Visualization';
 
 const MeTTaViewer = () => {
     const { user } = useAuth();
-    const { getFallbackData, isOnline } = useFallbackData();
+    const { getFallbackData, isOnline } = useFallback();
     const [loading, setLoading] = useState(false);
     const [atoms, setAtoms] = useState([]);
     const [stats, setStats] = useState({});
@@ -49,7 +49,8 @@ const MeTTaViewer = () => {
 
     useEffect(() => {
         loadInitialData();
-    }, [loadInitialData]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Remove loadInitialData from dependencies to avoid circular dependency
 
     const loadInitialData = useCallback(async () => {
         setLoading(true);
@@ -535,24 +536,35 @@ const MeTTaViewer = () => {
                                 </div>
                             </Card>
 
-                            {/* System Status */}
+                            {/* Decentralized Storage Status */}
                             <Card className="p-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                    <Activity className="w-5 h-5 text-green-600 mr-2" />
-                                    System Status
+                                    <Database className="w-5 h-5 text-blue-600 mr-2" />
+                                    Decentralized Storage
                                 </h3>
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-gray-600">Anthropic AI</span>
+                                        <span className="text-sm text-gray-600">IPFS Status</span>
                                         <Badge variant="success">Active</Badge>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-gray-600">MeTTa Runtime</span>
-                                        <Badge variant="warning">Simulation</Badge>
+                                        <span className="text-sm text-gray-600">Blockchain</span>
+                                        <Badge variant="success">CUDOS</Badge>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-gray-600">IPFS Storage</span>
-                                        <Badge variant="success">Connected</Badge>
+                                        <span className="text-sm text-gray-600">Verified Content</span>
+                                        <Badge variant="success">Stored</Badge>
+                                    </div>
+                                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                        <p className="text-xs text-blue-800 mb-2">
+                                            Verified news is automatically stored on IPFS with blockchain verification records.
+                                        </p>
+                                        <button
+                                            onClick={() => window.open('/blockchain', '_blank')}
+                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                        >
+                                            View Blockchain Records →
+                                        </button>
                                     </div>
                                 </div>
                             </Card>

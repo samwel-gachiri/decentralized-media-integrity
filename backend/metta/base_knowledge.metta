@@ -74,7 +74,7 @@
 (media-deepfake-risk social_media high)
 (media-deepfake-risk broadcast medium)
 
-    ; Verification rules
+; Verification rules
 (max-news-age-hours 48)
 (max-verification-distance 100)
 (min-source-evidence true)
