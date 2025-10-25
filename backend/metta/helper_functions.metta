@@ -1,131 +1,160 @@
 ; Decentralized News Integrity - Helper Functions
 ; This file contains utility functions and mathematical operations for news verification
 
-
+; Distance calculation (simplified Euclidean distance)
 (= (distance $lat1 $lng1 $lat2 $lng2)
-(let* (($dlat (- $lat2 $lat1))
-($dlng (- $lng2 $lng1)))
-((py-atom math.sqrt) (+ (* $dlat $dlat) (* $dlng $dlng)))))
-
+   (let* (($dlat (- $lat2 $lat1))
+          ($dlng (- $lng2 $lng1))
+          ($dlat-sq (* $dlat $dlat))
+          ($dlng-sq (* $dlng $dlng))
+          ($sum (+ $dlat-sq $dlng-sq)))
+     ((py-atom math.sqrt) $sum)))
 
 ; Time difference calculation (in hours) for news timeliness
 (= (time-diff $time1 $time2)
-(and (parse-time $time1 $t1)
-(parse-time $time2 $t2)
-(- $t2 $t1 $diff)
-(abs $diff $abs-diff)
-(/ $abs-diff 3600 $hours))  ; Convert seconds to hours
-$hours)
+   (let* (($t1 (parse-time $time1))
+          ($t2 (parse-time $time2))
+          ($diff (- $t2 $t1))
+          ($abs-diff (abs $diff))
+          ($hours (/ $abs-diff 3600)))
+     $hours))
 
-; Check if news reports are within specified hours of each other (for cross-verification)
+; Check if news reports are within specified hours of each other
 (= (within-hours $news1 $news2 $max-hours)
-(and (timestamp $news1 $time1)
-(timestamp $news2 $time2)
-(time-diff $time1 $time2 $diff)
-(<= $diff $max-hours))
-True)
+   (let* (($time1 (timestamp $news1))
+          ($time2 (timestamp $news2))
+          ($diff (time-diff $time1 $time2))
+          ($check (<= $diff $max-hours)))
+     $check))
 
 ; Check if two news reports are of the same type/category
 (= (same-news-category $news1 $news2)
-(and (news-category $news1 $category)
-(news-category $news2 $category))
-True)
+   (let* (($cat1 (news-category $news1))
+          ($cat2 (news-category $news2))
+          ($check (== $cat1 $cat2)))
+     $check))
 
-; Check if two news reports are at the same location (within 10km for news relevance)
+; Check if two news reports are at the same location (within 10km)
 (= (same-location $news1 $news2)
-(and (gps-coords $news1 ($lat1 $lng1))
-(gps-coords $news2 ($lat2 $lng2))
-(distance $lat1 $lng1 $lat2 $lng2 $dist)
-(<= $dist 10))  ; 10km radius for news relevance
-True)
+   (let (gps-coords $news1 ($lat1 $lng1))
+     (let (gps-coords $news2 ($lat2 $lng2))
+       (let* (($dist (distance $lat1 $lng1 $lat2 $lng2))
+              ($check (<= $dist 10)))
+         $check))))
 
-; Check if coordinates are within a region (simplified bounding box for news regions)
+; Check if coordinates are within a region
 (= (in-region $lat $lng $region)
-(and (region-bounds $region $min-lat $max-lat $min-lng $max-lng)
-(>= $lat $min-lat)
-(<= $lat $max-lat)
-(>= $lng $min-lng)
-(<= $lng $max-lng))
-True)
+   (let (region-bounds $region $min-lat $max-lat $min-lng $max-lng)
+     (let* (($check1 (>= $lat $min-lat))
+            ($check2 (<= $lat $max-lat))
+            ($check3 (>= $lng $min-lng))
+            ($check4 (<= $lng $max-lng))
+            ($and1 (and $check1 (and $check2 $check3)))
+            ($result (and $and1 (and $check4 True))))
+       $result)))
 
 ; Region bounding boxes (approximate for major news regions)
-(region-bounds "North America" 25 -60 -125 -65)
+(region-bounds "North America" 25 60 -125 -65)
 (region-bounds "Europe" 35 70 -10 40)
 (region-bounds "Asia" -10 80 25 180)
 (region-bounds "Africa" -35 35 -20 55)
 (region-bounds "South America" -55 15 -85 -35)
 (region-bounds "Australia" -45 -10 110 155)
 
-; Check if media metadata is consistent (timestamp matches news timestamp)
+; Check if media metadata is consistent
 (= (metadata-consistent $media-link $news-time $coords)
-(and (extract-media-time $media-link $media-time)
-(time-diff $news-time $media-time $diff)
-(<= $diff 2))  ; Within 2 hours for news timeliness
-True)
+   (let* (($media-time (extract-media-time $media-link))
+          ($diff (time-diff $news-time $media-time))
+          ($check (<= $diff 2)))
+     $check))
 
 ; Trust score validation (0-100 scale)
 (= (valid-trust-score $score)
-(and (>= $score 0)
-(<= $score 100))
-True)
+   (let* (($check1 (>= $score 0))
+          ($check2 (<= $score 100))
+          ($result (and $check1 (and $check2 True))))
+     $result))
 
 ; Calculate trust score change based on verification accuracy
 (= (trust-delta $accuracy)
-(cond ((<= $accuracy 0.5) -10)     ; Poor accuracy: -10 points
-((<= $accuracy 0.7) -2)      ; Average accuracy: -2 points
-((<= $accuracy 0.9) 5)       ; Good accuracy: +5 points
-(True 10))                   ; Excellent accuracy: +10 points
-$delta)
+   (if (<= $accuracy 0.5)
+       -10
+       (if (<= $accuracy 0.7)
+           -2
+           (if (<= $accuracy 0.9)
+               5
+               10))))
 
 ; News credibility calculation based on multiple factors
 (= (calculate-credibility $source-credibility $cross-references $timeliness)
-(cond ((and (> $source-credibility 0.8) (>= $cross-references 3) (<= $timeliness 24)) 0.95)
-((and (> $source-credibility 0.6) (>= $cross-references 2) (<= $timeliness 48)) 0.8)
-((and (> $source-credibility 0.4) (>= $cross-references 1) (<= $timeliness 72)) 0.6)
-(True 0.3))
-$credibility)
+   (let* (($check1 (> $source-credibility 0.8))
+          ($check2 (>= $cross-references 3))
+          ($check3 (<= $timeliness 24))
+          ($cond1 (and $check1 (and $check2 $check3))))
+     (if $cond1
+         0.95
+         (let* (($check4 (> $source-credibility 0.6))
+                ($check5 (>= $cross-references 2))
+                ($check6 (<= $timeliness 48))
+                ($cond2 (and $check4 (and $check5 $check6))))
+           (if $cond2
+               0.8
+               (let* (($check7 (> $source-credibility 0.4))
+                      ($check8 (>= $cross-references 1))
+                      ($check9 (<= $timeliness 72))
+                      ($cond3 (and $check7 (and $check8 $check9))))
+                 (if $cond3
+                     0.6
+                     0.3)))))))
 
 ; Reward calculation with adjustments based on news integrity
 (= (adjusted-reward $base-amount $trust-score $integrity-level $source-credibility)
-(and (trust-multiplier $trust-score $trust-mult)
-(integrity-multiplier $integrity-level $integrity-mult)
-(credibility-multiplier $source-credibility $credibility-mult)
-(* $base-amount $trust-mult $temp1)
-(* $temp1 $integrity-mult $temp2)
-(* $temp2 $credibility-mult $final-amount))
-$final-amount)
+   (let* (($trust-mult (trust-multiplier $trust-score))
+          ($integrity-mult (integrity-multiplier $integrity-level))
+          ($credibility-mult (credibility-multiplier $source-credibility))
+          ($temp1 (* $base-amount $trust-mult))
+          ($temp2 (* $temp1 $integrity-mult))
+          ($final-amount (* $temp2 $credibility-mult)))
+     $final-amount))
 
-; Multiplier functions for rewards
+; Trust multiplier function
 (= (trust-multiplier $score)
-(cond ((>= $score 90) 1.5)   ; 50% bonus for very high trust
-((>= $score 80) 1.2)   ; 20% bonus for high trust
-((>= $score 60) 1.0)   ; No adjustment for adequate trust
-(True 0.7))             ; 30% reduction for low trust
-$multiplier)
+   (if (>= $score 90)
+       1.5
+       (if (>= $score 80)
+           1.2
+           (if (>= $score 60)
+               1.0
+               0.7))))
 
+; Integrity multiplier function
 (= (integrity-multiplier $integrity-level)
-(cond ((= $integrity-level verified) 2.0)
-((= $integrity-level high) 1.5)
-((= $integrity-level medium) 1.0)
-((= $integrity-level low) 0.5))
-$multiplier)
+   (if (== $integrity-level verified)
+       2.0
+       (if (== $integrity-level high)
+           1.5
+           (if (== $integrity-level medium)
+               1.0
+               0.5))))
 
+; Credibility multiplier function
 (= (credibility-multiplier $credibility)
-(cond ((>= $credibility 0.9) 1.3)    ; 30% bonus for highly credible sources
-((>= $credibility 0.7) 1.1)    ; 10% bonus for credible sources
-((>= $credibility 0.5) 1.0)    ; No adjustment for moderate sources
-(True 0.8))                    ; 20% reduction for low credibility
-$multiplier)
+   (if (>= $credibility 0.9)
+       1.3
+       (if (>= $credibility 0.7)
+           1.1
+           (if (>= $credibility 0.5)
+               1.0
+               0.8))))
 
-; News timeliness validation (news should be recent for integrity)
+; News timeliness validation (within 1 week)
 (= (timely-news $news)
-(and (timestamp $news $time)
-(current-time $now)
-(time-diff $time $now $age-hours)
-(<= $age-hours 168))  ; Within 1 week for news relevance
-True)
+   (let (timestamp $news $time)
+     (let* (($now (current-time))
+            ($age-hours (time-diff $time $now))
+            ($check (<= $age-hours 168)))
+       $check)))
 
-; Check if user has different verification approaches (for consensus)
+; Check if users are different (for diverse verification)
 (= (diverse-verification $user1 $user2)
-(not (= $user1 $user2))
-True)
+   (not (== $user1 $user2)))

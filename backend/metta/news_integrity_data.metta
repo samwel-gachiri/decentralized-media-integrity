@@ -55,52 +55,79 @@
 
    ; Functions to get news integrity data
 (= (get-source-credibility $source)
-(let (($credibility (match &self (source-credibility $source $value) $value)))
-(if $credibility $credibility 0.5)))
+   (
+      (let 
+         ($credibility (match &self (source-credibility $source $value) $value))
+      )
+      (if $credibility $credibility 0.5)
+   ))
 
 (= (get-category-misinformation-risk $category)
-(let (($risk (match &self (category-misinformation-risk $category $value) $value)))
-(if $risk $risk 0.5)))
+   (let 
+      ($risk (match &self (category-misinformation-risk $category $value) $value))
+      (if $risk $risk 0.5)
+   ))
 
 (= (get-deepfake-threshold $media-type)
-(let (($threshold (match &self (deepfake-threshold $media-type $value) $value)))
-(if $threshold $threshold 0.5)))
+      (let 
+         ($threshold (match &self (deepfake-threshold $media-type $value) $value))
+      (if $threshold $threshold 0.5)))
 
 (= (get-min-cross-references $credibility-level)
-(let (($min-refs (match &self (min-cross-references $credibility-level $value) $value)))
-(if $min-refs $min-refs 1)))
+   (let (($min-refs (match &self (min-cross-references $credibility-level $value) $value)))
+   (if $min-refs $min-refs 1)))
 
 (= (get-timeliness-factor $news-type)
-(let (($factor (match &self (timeliness-factor $news-type $value) $value)))
-(if $factor $factor 24)))
+   (let (($factor (match &self (timeliness-factor $news-type $value) $value)))
+   (if $factor $factor 24)))
 
 (= (get-min-source-types $credibility-level)
-(let (($min-types (match &self (min-source-types $credibility-level $value) $value)))
-(if $min-types $min-types 1)))
+   (let (($min-types (match &self (min-source-types $credibility-level $value) $value)))
+   (if $min-types 
+       $min-types 
+       1
+      )))
 
 (= (get-fact-checker-credibility $fact-checker)
-(let (($credibility (match &self (fact-checker-credibility $fact-checker $value) $value)))
-(if $credibility $credibility 0.7)))
+   (let (($credibility (match &self (fact-checker-credibility $fact-checker $value) $value)))
+   (if $credibility 
+       $credibility 
+         0.7)))
 
    ; Calculate overall news integrity score
 (= (calculate-news-integrity-score $source-credibility $content-analysis $cross-references $timeliness)
-(let* (($source-weight 0.4)
-($content-weight 0.3)
-($cross-ref-weight 0.2)
-($timeliness-weight 0.1)
-($weighted-score (+ (* $source-credibility $source-weight)
-(* $content-analysis $content-weight)
-(* $cross-references $cross-ref-weight)
-(* $timeliness $timeliness-weight))))
-$weighted-score))
+   (let* 
+      (
+         ($source-weight 0.4)
+         ($content-weight 0.3)
+         ($cross-ref-weight 0.2)
+         ($timeliness-weight 0.1)
+         ($weighted-score 
+            (+ (+ (* $source-credibility $source-weight)
+                  (+ (* $content-analysis $content-weight)
+                     (* $cross-references $cross-ref-weight)))
+               (* $timeliness $timeliness-weight))))
+   $weighted-score))
 
 ; Determine news credibility level based on score
 (= (determine-credibility-level $score)
-(cond ((>= $score 0.8) verified)
-((>= $score 0.6) high)
-((>= $score 0.4) medium)
-(True low)))
+      (if (>= $score 0.8) 
+            verified
+            (if (>= $score 0.6) 
+                  high
+                  (if (>= $score 0.4) 
+                        medium
+                        low
+                  )
+            )
+      ))
 
    ; Check if news passes integrity threshold
 (= (passes-integrity-threshold $score $threshold)
-(>= $score $threshold))
+   (>= $score $threshold))
+
+; !(passes-integrity-threshold 0.30 0.7)
+
+; !(determine-credibility-level 0.75)
+
+; !(calculate-news-integrity-score 0.85 0.9 3 12)
